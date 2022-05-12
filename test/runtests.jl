@@ -1,4 +1,4 @@
-using TMItransient, TMI
+using TMItransient 
 using Test
 
 @testset "TMItransient.jl" begin

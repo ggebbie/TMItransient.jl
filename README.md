@@ -5,6 +5,9 @@
 [![Build Status](https://github.com/ggebbie/TMItransient.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/ggebbie/TMItransient.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/ggebbie/TMItransient.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/ggebbie/TMItransient.jl)
 
+Transient simulations using the TMI circulation matrix. This Julia package builds upon 
+the package [TMI.jl](https://github.com/ggebbie/TMI.jl).
+
 # Package setup
 
 This package was setup with PkgTemplates.jl. The starting code was
@@ -17,10 +20,10 @@ t = Template(; user="ggebbie", dir="~/projects", authors="G Jake Gebbie", julia=
 t("TMItransient.jl")
 ```
 
-Follow notes to make documenter_key and deploy key https://m3g.github.io/JuliaNotes.jl/stable/publish_docs/ 
-`import DocumenterTools`
-`DocumenterTools.genkeys()`
-`DocumenterTools.genkeys(user="ggebbie", repo="TMItransient.jl")` # optionally (I think)
+Follow [notes](https://m3g.github.io/JuliaNotes.jl/stable/publish_docs/) to make documenter key and deploy key 
+`import DocumenterTools`\
+`DocumenterTools.genkeys()`\
+`DocumenterTools.genkeys(user="ggebbie", repo="TMItransient.jl")` # optionally (I think)\
 Note: must call second key "DOCUMENTER_KEY"
 
 - optional: add argument to deploydocs in docs/make.jl "devbranch="main" or "numerics" etc. Make a /dev version of docs. Will it make a stable version when a release is made?
@@ -31,5 +34,5 @@ Note: must call second key "DOCUMENTER_KEY"
 
 - You can also update the docs just by uploading a new tag, with:
 
-`git tag -a v0.1.0+doc2 -m "v0.1.0"`
+`git tag -a v0.1.0+doc2 -m "v0.1.0"`\
 `git push --tag`
