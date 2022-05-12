@@ -1,6 +1,6 @@
 module TMItransient
 
-using Revise, OrdinaryDiffEq, PreallocationTools, LinearAlgebra
+using OrdinaryDiffEq, PreallocationTools, LinearAlgebra
 
 export ces_ncwrite, varying!
 
