@@ -11,7 +11,8 @@ using Test
     A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion)
 
     @testset "transientsimulation" begin
-        using Interpolations, NaNMath, DifferentialEquations, LinearAlgebra
+
+        using Interpolations, NaNMath, DifferentialEquations, LinearAlgebra, PreallocationTools
 
         latbox = [50,60]
         lonbox = [-50,0]
@@ -76,7 +77,7 @@ using Test
         surface_ind = findall(x->x[3] ==1, γ.I)
 
         p = (Csfc,surface_ind,τ,L,B,li,LC,BF,Cb) #parameters
-        f(du, u, p, t) = varying!(du, u, p, t)
+        f(du, u, p, t) = TMItransient.varying!(du, u, p, t)
         func = ODEFunction(f, jac_prototype=L)
         prob = ODEProblem(func, u0, tspan,p)
         println("Solving varying ODE")
