@@ -26,11 +26,15 @@ Follow [notes](https://m3g.github.io/JuliaNotes.jl/stable/publish_docs/) to make
 `DocumenterTools.genkeys(user="ggebbie", repo="TMItransient.jl")` # optionally (I think)\
 Note: must call second key "DOCUMENTER_KEY"
 
-- optional: add argument to deploydocs in docs/make.jl "devbranch="main" or "numerics" etc. Make a /dev version of docs. Will it make a stable version when a release is made?
+- optional: add argument to deploydocs in docs/make.jl "devbranch="main" or "numerics" etc. Make a /dev version of docs. It makes a stable version of the docs when a release or tag occurs.
 
-- to build docs manually, try julia --project=docs docs/make.jl when I did it locally, I activated TMI project, then include("make.jl") and it worked locally
+- to build docs manually, try \
+`julia --project=docs docs/make.jl`\ 
+when I did it locally, I activated TMI project, then \
+`include("make.jl")`\
+and it worked locally
 
-- previously I made a gh-pages branch following, but it happened automatically this time [[https://coderwall.com/p/0n3soa/create-a-disconnected-git-branch][instructions for creating a disconnected git branch]]
+- previously I made a gh-pages branch following,  [[https://coderwall.com/p/0n3soa/create-a-disconnected-git-branch][instructions for creating a disconnected git branch]] but it happened automatically this time
 
 - You can also update the docs just by uploading a new tag, with:
 
