@@ -12,11 +12,9 @@ NaNMath = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 PreallocationTools = "d236fae5-4411-538c-8e31-a6e3d9e00b46"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
-TMI = "582500f6-28c8-4d8f-aabe-b197735ec1d4"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-TMI = "0.1.14"
 julia = "1.7"
 
 [extras]
