@@ -99,4 +99,20 @@ function ces_ncwrite(γ,time,sol_array)
     close(ds)
 end
 
+# Credit to DrWatson.jl for these functions
+# Didn't want to add dependency for these small functions
+#projectdir() = dirname(Base.active_project())
+
+# find packagedir even if TMI is not the active project
+
+pkgdir() = dirname(dirname(pathof(TMItransient)))
+pkgdir(args...) = joinpath(pkgdir(), args...)
+
+pkgdatadir() = joinpath(pkgdir(),"data")
+pkgdatadir(args...) = joinpath(pkgdatadir(), args...)
+
+pkgsrcdir() = joinpath(pkgdir(),"src")
+pkgsrcdir(args...) = joinpath(pkgsrcdir(), args...)
+
+
 end
