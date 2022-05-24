@@ -70,8 +70,8 @@ end
 # Output
 - saves .nc file titled "ces_output.nc" in data array 
 """
-function ces_ncwrite(γ,time,sol_array)
-    file = pkgdatadir() * "/ces_output.nc"
+function ces_ncwrite(γ,time,sol_array, filepath)
+    file = filepath * "/ces_output.nc"
     ds = NCDataset(file,"c")
 
     #define dimensions 
@@ -98,5 +98,6 @@ function ces_ncwrite(γ,time,sol_array)
     v.attrib["units"] = "potential temperature anomaly"
     close(ds)
 end
+
 
 end
