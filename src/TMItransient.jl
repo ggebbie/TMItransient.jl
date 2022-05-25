@@ -1,8 +1,8 @@
 module TMItransient
 
-using OrdinaryDiffEq, PreallocationTools, LinearAlgebra, NCDatasets, Interpolations
+using OrdinaryDiffEq, PreallocationTools, LinearAlgebra, NCDatasets, Interpolations, TMI, NaNMath
 
-export readopt, ces_ncwrite, varying!, setupODE
+export readopt, ces_ncwrite, varying!, setupODE, s_array, stability_check
 
 """
      read surface layer
@@ -104,6 +104,16 @@ function setupODE(γ, u0,tsfc,dsfc,bc,L,B,t_int)
     return func, p, tspan
 end
 
+"""
+    function  s_array(sol, γ)
+    Converts from DE.jl output to time x lat x lon x depth 
+"""
+function s_array(sol, γ)
+    sol_array = zeros((length(sol.t),size(γ.wet)[1],size(γ.wet)[2],size(γ.wet)[3]))
+    [sol_array[i,:,:,:] = vec2fld(sol.u[i],γ.I) for i ∈ 1:length(sol.t)]
+    return sol_array
+end
+
 
 """
     function ces_ncwrite(γ,time,sol_array)
@@ -142,6 +152,22 @@ function ces_ncwrite(γ,time,sol_array, filepath)
     v.attrib["title"] = "output of commonerasim.jl" 
     v.attrib["units"] = "potential temperature anomaly"
     close(ds)
+end
+
+
+"""
+    stability_check(sol_array, Csfc) 
+    checks stability of ODE output 
+# Arguments
+- `sol_array`: solution array 
+- `Csfc`: boundary condition 
+
+# Output
+- prints true or false 
+"""
+function stability_check(sol_array, Csfc) 
+    stable = true ? NaNMath.maximum(sol_array) < NaNMath.maximum(Csfc) && NaNMath.minimum(sol_array) > NaNMath.minimum(Csfc) : false
+    println("stable: " *string(stable))
 end
 
 
