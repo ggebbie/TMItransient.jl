@@ -37,14 +37,17 @@ end
 - `du`: numerical value of LC+Bf, vector of size 74064 for 4°
 """
 function varying!(du, u, p, t)
-    
+    #println("changes")
     #load parameters 
     Csfc,surface_ind,τ,L,B,li,LC,BF,Cb = p
-    println("time = ", t)
+    #println("time = ", t)
     
     #generate Cb - interpolated surface boundary condition  
-    li_t = convert(Float64, li[t])
-    Cb .= (ceil(li_t)-li_t).*Csfc[Int(floor(li_t)), :] .+ (li_t-floor(li_t)).*Csfc[Int(ceil(li_t)), :]
+    li_t = convert(Float16, li[t])
+    csfc_floor = @view Csfc[Int(floor(li_t)), :]
+    csfc_ceil = @view Csfc[Int(ceil(li_t)), :]
+    frac = ceil(li_t) - li_t
+    Cb .= frac.*csfc_floor .+ (1-frac).*csfc_ceil
     
     #use PreallocationTools.jl to handle Dual type in u 
     LC = get_tmp(LC, first(u)*t) 
