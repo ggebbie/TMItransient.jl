@@ -1,8 +1,8 @@
 module TMItransient
 
-using OrdinaryDiffEq, PreallocationTools, LinearAlgebra, NCDatasets
+using OrdinaryDiffEq, PreallocationTools, LinearAlgebra, NCDatasets, Interpolations
 
-export readopt, ces_ncwrite, varying!
+export readopt, ces_ncwrite, varying!, setupODE
 
 """
      read surface layer
@@ -62,6 +62,48 @@ function varying!(du, u, p, t)
     @. du = LC + BF 
     nothing
 end
+
+"""
+    function setupODE(γ, u0,tsfc, dsfc,bc,L, t_int)
+    Setup ODEFunction for LC+Bf 
+# Arguments
+- `γ`: from TMI 
+- `u0`: initial condition
+- `tsfc`: time that surface conditions are specfiied at 
+- `dsfc`: 
+- `bc`:4D array that we will take the surface behavior from to use as forcing
+- `L`:from TMI 
+- `t_int`: an integer in 1:length(tsfc) with how many timesteps we want to take
+# Output
+- `func`: ODEFunction object
+"""
+
+function setupODE(γ, u0,tsfc,dsfc,bc,L,B,t_int) 
+    #Timespan that diffeq solver will solve for, must be within tsfc 
+    tspan = (tsfc[begin], tsfc[t_int])
+
+    #Get surface boundary conditions from Theta_anom_OPT 
+    Csfc = zeros((length(tsfc), length(dsfc)))
+    [Csfc[i,:] = bc[i,:,:,1][γ.wet[:,:,1]] for i ∈ 1:length(tsfc)]
+
+    #more parameters for diffeq solver 
+    τ = 1 / 12 #monthly restoring timescale
+    li = LinearInterpolation(tsfc, 1:length(tsfc))
+
+    #Instantiate arrays that the diffeq solver will reallocate
+    LC = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl
+    BF = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl 
+    Cb = similar(Csfc[1,:])
+    surface_ind = findall(x-> x[3] == 1, γ.I) #Find which points in γ.I are on the surface
+    #setup ODEproblem and return 
+    
+    f(du, u, p, t) = varying!(du, u, p, t) #diffeq function to solve
+    jacobian(u,p,t) = L 
+    func = ODEFunction(f, jac = jacobian, jac_prototype = L) #jac_prototype for sparse array
+    p = (Csfc, surface_ind, τ, L, B, li, LC, BF, Cb) 
+    return func, p, tspan
+end
+
 
 """
     function ces_ncwrite(γ,time,sol_array)
