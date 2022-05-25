@@ -1,8 +1,21 @@
 module TMItransient
 
-using OrdinaryDiffEq, PreallocationTools, LinearAlgebra, NCDatasets
+using OrdinaryDiffEq, PreallocationTools, LinearAlgebra, NCDatasets,
+    MAT, TMI, Interpolations
 
-export readopt, ces_ncwrite, varying!
+export readopt, ces_ncwrite, varying!,
+    read_stepresponse, datadir, srcdir, vintage
+
+# Define these paths by hand so that we don't
+# have to use DrWatson
+pkgdir() = dirname(dirname(pathof(TMItransient)))
+pkgdir(args...) = joinpath(pkgdir(), args...)
+
+datadir() = joinpath(pkgdir(),"data")
+datadir(args...) = joinpath(datadir(), args...)
+
+srcdir() = joinpath(pkgdir(),"src")
+srcdir(args...) = joinpath(srcdir(), args...)
 
 """
      read surface layer
@@ -99,5 +112,106 @@ function ces_ncwrite(γ,time,sol_array, filepath)
     close(ds)
 end
 
+""" 
+    function gooddata
+    a useful one-liner
+"""
+goodtime = x -> (typeof(x) <: Number && !isnan(x))
 
+"""
+    function read_stepresponse()
+
+    read previously computed MATLAB output using shell script
+
+    Warning: hard-coded file names from a 4° x 4° TMI run
+"""
+function read_stepresponse()
+
+    TMIversion = "modern_90x45x33_GH10_GH12"
+
+    ncfile = download_ncfile(TMIversion)
+    γ = Grid(ncfile)
+
+    # next load pre-computed step function response
+    stepfile =  datadir("ttdsummary_global_13july2011.mat")
+    !isfile(stepfile) && download_stepresponse()
+
+    matfile = download_matfile(TMIversion)
+    Izyx = cartesianindex(matfile)
+
+    matobj = matopen(stepfile)
+    y = read(matobj,"Y") # CDF of step function response
+    
+    τ = vec(read(matobj,"T")) # time lag
+
+    # eliminate empty times
+    ngood = count(goodtime,sum(y,dims = 2))
+
+    Δ = Vector{Field{Float64}}(undef,ngood)
+    τ = τ[1:ngood]
+    
+    for tt in 1:ngood
+
+        if iszero(τ[tt])
+            # set to zero so that mixed-layer goes from zero to one
+            # in the first year
+            tracer = tracerinit(zeros(sum(γ.wet)), Izyx, γ.wet)
+
+        else
+            # initialize a 3D tracer array where zyx format
+            # is transferred to xyz format
+            tracer = tracerinit(y[tt,:], Izyx, γ.wet)
+        end
+        
+        # construct a Field type
+        Δ[tt] = Field(tracer,γ)
+        
+    end
+    
+    return Δ, τ
+end
+
+function download_stepresponse()
+    shellscript = srcdir("read_stepresponse.sh")
+    run(`sh $shellscript`)
+
+    # move the file to datadir
+    println(joinpath(pwd(),"ttdsummary_global_13july2011.mat"))
+    !isfile(joinpath(pwd(),"ttdsummary_global_13july2011.mat"))
+
+    !isdir(datadir()) && mkdir(datadir())
+    mv(joinpath(pwd(),"ttdsummary_global_13july2011.mat"),
+       datadir("ttdsummary_global_13july2011.mat"))
+
+end
+
+"""
+    function vintage(t₀,tf,Δ,τ)
+
+    percentage of water in the modern ocean
+    from a vintage defined by the calendar year interval
+    t₀ [cal yr CE] => tf [cal yr CE]
+
+# Arguments
+- `t₀`: Starting calendar year of vintage, e.g., 1450 CE
+- `tf`: final calendar year of vintage, e.g., 1850 CE
+- `Δ::Vector{Field}`: Step function response
+- `τ = Vector{Float64}`: time lags associated with step response
+- `tmodern=2022`: modern calendar year
+"""
+function vintage(t₀,tf,Δ,τ,tmodern=2022)
+
+    tmodern = 2022 # modern calendar year
+    τ₀ = tmodern - t₀ # transfer starting cal year to equivalent lag
+    τf = tmodern - tf # end year
+
+    interp_linear = LinearInterpolation(τ, Δ)
+
+    g = interp_linear(τ₀) - interp_linear(τf)
+    
+    return g
+end
+
+
+    
 end
