@@ -4,7 +4,7 @@ using OrdinaryDiffEq, PreallocationTools, LinearAlgebra, NCDatasets,
     MAT, TMI, Interpolations
 
 export readopt, ces_ncwrite, varying!,
-    read_stepresponse, datadir, srcdir, vintage
+    read_stepresponse, datadir, srcdir, vintagedistribution
 
 # Define these paths by hand so that we don't
 # have to use DrWatson
@@ -186,7 +186,7 @@ function download_stepresponse()
 end
 
 """
-    function vintage(t₀,tf,Δ,τ)
+    function vintagedistribution(t₀,tf,Δ,τ)
 
     percentage of water in the modern ocean
     from a vintage defined by the calendar year interval
@@ -199,7 +199,7 @@ end
 - `τ = Vector{Float64}`: time lags associated with step response
 - `tmodern=2022`: modern calendar year
 """
-function vintage(t₀,tf,Δ,τ,tmodern=2022)
+function vintagedistribution(t₀,tf,Δ,τ,tmodern=2022)
 
     tmodern = 2022 # modern calendar year
     τ₀ = tmodern - t₀ # transfer starting cal year to equivalent lag
