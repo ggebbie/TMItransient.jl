@@ -1,8 +1,8 @@
 module TMItransient
 
-using OrdinaryDiffEq, PreallocationTools, LinearAlgebra, NCDatasets
+using OrdinaryDiffEq, PreallocationTools, LinearAlgebra, NCDatasets, Interpolations, TMI, NaNMath
 
-export readopt, ces_ncwrite, varying!
+export readopt, ces_ncwrite, varying!, setupODE,setupODE_nojac, s_array, stability_check
 
 """
      read surface layer
@@ -37,14 +37,17 @@ end
 - `du`: numerical value of LC+Bf, vector of size 74064 for 4°
 """
 function varying!(du, u, p, t)
-    
+    #println("changes")
     #load parameters 
     Csfc,surface_ind,τ,L,B,li,LC,BF,Cb = p
-    println("time = ", t)
+    #println("time = ", t)
     
     #generate Cb - interpolated surface boundary condition  
-    li_t = convert(Float64, li[t])
-    Cb .= (ceil(li_t)-li_t).*Csfc[Int(floor(li_t)), :] .+ (li_t-floor(li_t)).*Csfc[Int(ceil(li_t)), :]
+    li_t = convert(Float16, li[t])
+    csfc_floor = @view Csfc[Int(floor(li_t)), :]
+    csfc_ceil = @view Csfc[Int(ceil(li_t)), :]
+    frac = ceil(li_t) - li_t
+    Cb .= frac.*csfc_floor .+ (1-frac).*csfc_ceil
     
     #use PreallocationTools.jl to handle Dual type in u 
     LC = get_tmp(LC, first(u)*t) 
@@ -59,6 +62,88 @@ function varying!(du, u, p, t)
     @. du = LC + BF 
     nothing
 end
+
+"""
+    function setupODE(γ, u0,tsfc, dsfc,bc,L, t_int)
+    Setup ODEFunction for LC+Bf 
+# Arguments
+- `γ`: from TMI 
+- `u0`: initial condition
+- `tsfc`: time that surface conditions are specfiied at 
+- `dsfc`: 
+- `bc`:4D array that we will take the surface behavior from to use as forcing
+- `L`:from TMI 
+- `t_int`: an integer in 1:length(tsfc) with how many timesteps we want to take
+# Output
+- `func`: ODEFunction object
+"""
+
+function setupODE(γ, u0,tsfc,dsfc,bc,L,B,t_int) 
+    #Timespan that diffeq solver will solve for, must be within tsfc 
+    tspan = (tsfc[begin], tsfc[t_int])
+
+    #Get surface boundary conditions from Theta_anom_OPT 
+    Csfc = zeros((length(tsfc), length(dsfc)))
+    [Csfc[i,:] = bc[i,:,:,1][γ.wet[:,:,1]] for i ∈ 1:length(tsfc)]
+
+    #more parameters for diffeq solver 
+    τ = 1 / 12 #monthly restoring timescale
+    li = LinearInterpolation(tsfc, 1:length(tsfc))
+
+    #Instantiate arrays that the diffeq solver will reallocate
+    LC = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl
+    BF = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl 
+    Cb = similar(Csfc[1,:])
+    surface_ind = findall(x-> x[3] == 1, γ.I) #Find which points in γ.I are on the surface
+    #setup ODEproblem and return 
+    
+    f(du, u, p, t) = varying!(du, u, p, t) #diffeq function to solve
+    jacobian(u,p,t) = L 
+    func = ODEFunction(f, jac = jacobian, jac_prototype = L) #jac_prototype for sparse array
+    p = (Csfc, surface_ind, τ, L, B, li, LC, BF, Cb) 
+    return func, p, tspan
+end
+
+"""
+    function setupODE(γ, u0,tsfc, dsfc,bc,L, t_int)
+    Setup ODEFunction for LC+Bf with no Jacobian 
+"""
+function setupODE_nojac(γ, u0,tsfc,dsfc,bc,L,B,t_int) 
+    #Timespan that diffeq solver will solve for, must be within tsfc 
+    tspan = (tsfc[begin], tsfc[t_int])
+
+    #Get surface boundary conditions from Theta_anom_OPT 
+    Csfc = zeros((length(tsfc), length(dsfc)))
+    [Csfc[i,:] = bc[i,:,:,1][γ.wet[:,:,1]] for i ∈ 1:length(tsfc)]
+
+    #more parameters for diffeq solver 
+    τ = 1 / 12 #monthly restoring timescale
+    li = LinearInterpolation(tsfc, 1:length(tsfc))
+
+    #Instantiate arrays that the diffeq solver will reallocate
+    LC = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl
+    BF = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl 
+    Cb = similar(Csfc[1,:])
+    surface_ind = findall(x-> x[3] == 1, γ.I) #Find which points in γ.I are on the surface
+    #setup ODEproblem and return 
+    
+    f(du, u, p, t) = varying!(du, u, p, t) #diffeq function to solve
+    #jacobian(u,p,t) = L 
+    func = ODEFunction(f)#, jac = jacobian, jac_prototype = L) #jac_prototype for sparse array
+    p = (Csfc, surface_ind, τ, L, B, li, LC, BF, Cb) 
+    return func, p, tspan
+end
+
+"""
+    function  s_array(sol, γ)
+    Converts from DE.jl output to time x lat x lon x depth 
+"""
+function s_array(sol, γ)
+    sol_array = zeros((length(sol.t),size(γ.wet)[1],size(γ.wet)[2],size(γ.wet)[3]))
+    [sol_array[i,:,:,:] = vec2fld(sol.u[i],γ.I) for i ∈ 1:length(sol.t)]
+    return sol_array
+end
+
 
 """
     function ces_ncwrite(γ,time,sol_array)
@@ -97,6 +182,22 @@ function ces_ncwrite(γ,time,sol_array, filepath)
     v.attrib["title"] = "output of commonerasim.jl" 
     v.attrib["units"] = "potential temperature anomaly"
     close(ds)
+end
+
+
+"""
+    stability_check(sol_array, Csfc) 
+    checks stability of ODE output 
+# Arguments
+- `sol_array`: solution array 
+- `Csfc`: boundary condition 
+
+# Output
+- prints true or false 
+"""
+function stability_check(sol_array, Csfc) 
+    stable = true ? NaNMath.maximum(sol_array) < NaNMath.maximum(Csfc) && NaNMath.minimum(sol_array) > NaNMath.minimum(Csfc) : false
+    println("stable: " *string(stable))
 end
 
 
