@@ -12,7 +12,7 @@ using Test
 
     @testset "transientsimulation" begin
 
-        using Interpolations, NaNMath, DifferentialEquations, LinearAlgebra, PreallocationTools
+        using Interpolations, NaNMath, DifferentialEquations, LinearAlgebra, PreallocationTools, Sundials
 
         latbox = [50,60]
         lonbox = [-50,0]
@@ -42,7 +42,7 @@ using Test
         func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array 
         prob = ODEProblem(func, u0, tspan)
         println("Solving fixed ODE")
-        @time sol = solve(prob,QNDF(),abstol = 1e-4,reltol=1e-4,calck=false)
+        @time sol = solve(prob,CVODE_BDF(linear_solver=:GMRES),abstol = 1e-4,reltol=1e-4,calck=false)
         println("ODE solved")
 
         #put sol into time x lon x lat x depth 
