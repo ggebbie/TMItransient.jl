@@ -1576,10 +1576,10 @@ uuid = "582500f6-28c8-4d8f-aabe-b197735ec1d4"
 version = "0.1.13"
 
 [[deps.TMItransient]]
-deps = ["DifferentialEquations", "Interpolations", "LinearAlgebra", "NaNMath", "OrdinaryDiffEq", "PreallocationTools", "Revise", "TMI", "Test"]
+deps = ["DifferentialEquations", "Interpolations", "LinearAlgebra", "NCDatasets", "NaNMath", "OrdinaryDiffEq", "PreallocationTools", "Revise", "Sundials", "TMI", "Test"]
 path = ".."
 uuid = "ab8155c7-aa61-46aa-9e27-6244078cebd2"
-version = "0.1.0"
+version = "0.1.2"
 
 [[deps.TOML]]
 deps = ["Dates"]
