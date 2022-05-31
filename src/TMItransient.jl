@@ -164,7 +164,7 @@ function read_stepresponse()
         end
         
         # construct a Field type
-        Δ[tt] = Field(tracer,γ)
+        Δ[tt] = Field(tracer,γ,:Δ,"step response","dimensionless")
         
     end
     
