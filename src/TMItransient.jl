@@ -198,18 +198,30 @@ end
 - `Δ::Vector{Field}`: Step function response
 - `τ = Vector{Float64}`: time lags associated with step response
 - `tmodern=2022`: modern calendar year
+
+# Output
+- `g::Field`: 3D distribution of vintage contribution
+
+# Warning
+- should be a way to make Δ argument more general (more types)
 """
 function vintagedistribution(t₀,tf,Δ,τ,tmodern=2022)
 
-    tmodern = 2022 # modern calendar year
     τ₀ = tmodern - t₀ # transfer starting cal year to equivalent lag
     τf = tmodern - tf # end year
 
     interp_linear = LinearInterpolation(τ, Δ)
+    #g = interp_linear(τ₀) - interp_linear(τf)
 
-    g = interp_linear(τ₀) - interp_linear(τf)
-    
-    return g
+    if isinf(t₀)
+        # we know that CDF(τ=Inf) = 1.
+        println("do this one")
+        return g = ones(Δ[1].γ) - interp_linear(τf)
+    else
+        println("do that one")
+        return g = interp_linear(τ₀) - interp_linear(τf)
+    end
+
 end
 
 
