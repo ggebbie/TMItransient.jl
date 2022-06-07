@@ -215,10 +215,8 @@ function vintagedistribution(t₀,tf,Δ,τ,tmodern=2022)
 
     if isinf(t₀)
         # we know that CDF(τ=Inf) = 1.
-        println("do this one")
         return g = ones(Δ[1].γ) - interp_linear(τf)
     else
-        println("do that one")
         return g = interp_linear(τ₀) - interp_linear(τf)
     end
 
