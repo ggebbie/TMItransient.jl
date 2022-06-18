@@ -147,7 +147,7 @@ function read_stepresponse()
     # eliminate empty times
     ngood = count(goodtime,sum(y,dims = 2))
 
-    Δ = Vector{Field{Float64}}(undef,ngood)
+    Δ = Vector{TMI.Field}(undef,ngood)
     τ = τ[1:ngood]
     
     for tt in 1:ngood
@@ -164,7 +164,7 @@ function read_stepresponse()
         end
         
         # construct a Field type
-        Δ[tt] = Field(tracer,γ,:Δ,"step response","dimensionless")
+        Δ[tt] = TMI.Field(tracer,γ,:Δ,"step response","dimensionless")
         
     end
     
@@ -186,7 +186,7 @@ function download_stepresponse()
 end
 
 """
-    function vintagedistribution(t₀,tf,Δ,τ)
+    function vintagedistribution(t₀,tf,Δ,τ,tmodern=2022,interp="linear")
 
     percentage of water in the modern ocean
     from a vintage defined by the calendar year interval
@@ -198,30 +198,33 @@ end
 - `Δ::Vector{Field}`: Step function response
 - `τ = Vector{Float64}`: time lags associated with step response
 - `tmodern=2022`: modern calendar year
-
+- `interp=linear`: or can be "spline"
 # Output
 - `g::Field`: 3D distribution of vintage contribution
 
 # Warning
 - should be a way to make Δ argument more general (more types)
 """
-function vintagedistribution(t₀,tf,Δ,τ,tmodern=2022)
+function vintagedistribution(t₀,tf,Δ,τ;tmodern=2022,interp="linear")
 
     τ₀ = tmodern - t₀ # transfer starting cal year to equivalent lag
     τf = tmodern - tf # end year
 
-    interp_linear = LinearInterpolation(τ, Δ)
-    #g = interp_linear(τ₀) - interp_linear(τf)
-
+    # get interpolation object
+    # if interp == "linear"
+    #     itp = LinearInterpolation(τ, Δ)
+    # elseif interp == "spline"
+        itp = interpolate(τ, Δ, FritschCarlsonMonotonicInterpolation())
+#    end
+    
     if isinf(t₀)
         # we know that CDF(τ=Inf) = 1.
-        return g = ones(Δ[1].γ) - interp_linear(τf)
+        # return g = ones(Δ[1].γ) - interp_linear(τf)
+        return g = ones(Δ[1].γ) - itp(τf)
     else
-        return g = interp_linear(τ₀) - interp_linear(τf)
+        #return g = interp_linear(τ₀) - interp_linear(τf)
+        return g = itp(τ₀) - itp(τf)
     end
-
 end
-
-
     
 end
