@@ -4,7 +4,8 @@ using OrdinaryDiffEq, PreallocationTools, LinearAlgebra, NCDatasets,
     MAT, TMI, Interpolations
 
 export readopt, ces_ncwrite, varying!,
-    read_stepresponse, datadir, srcdir, vintagedistribution
+    read_stepresponse, datadir, srcdir, vintagedistribution,
+    deltaresponse, taudeltaresponse, agedistribution
 
 # Define these paths by hand so that we don't
 # have to use DrWatson
@@ -226,5 +227,72 @@ function vintagedistribution(t₀,tf,Δ,τ;tmodern=2022,interp="linear")
         return g = itp(τ₀) - itp(τf)
     end
 end
+
+
+"""
+    function agedistribution
+
+    age distribution refers to distribution over lags, not space
+    sometimes called a transit time distribution
+"""
+function agedistribution(loc)
+
+    Δ,τ = read_stepresponse()
+    ncdf = length(τ)
+    npdf = ncdf - 1
+
+    # get weighted interpolation indices
+    wis= Vector{Tuple{Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}}}(undef,1)
+    #[wis[xx] = interpindex(loc[xx],Δ[xx].γ) for xx in 1]
+    wis[1] = interpindex(loc,Δ[1].γ)
     
+    Δloc = Vector{Float64}(undef,ncdf)
+    for tt in 1:ncdf
+        Δloc[tt] = observe(Δ[tt],wis,Δ[tt].γ)[1] # kludge to convert to scalar
+    end
+    println(typeof(Δloc))
+    tg, g = deltaresponse(Δloc,τ)
+    
+    return g
+    
+end
+
+"""
+    function deltaresponse
+
+    Take CDF and turn it into PDF
+"""
+function deltaresponse(Δ,τΔ)
+
+    # hard coded annual resolution, easy because don't have to normalize
+    τmax = maximum(τΔ)
+    tgedge = 0:floor(τmax)
+    tg = 0.5:floor(τmax)
+
+    #    interp_linear = LinearInterpolation(τΔ, Δ)
+    # Δhires = interp_linear(tgedge)
+
+    itp = interpolate(τΔ, Δ, FritschCarlsonMonotonicInterpolation())
+    Δhires = itp.(tgedge)
+    g = diff(Δhires)
+        
+    return tg, g
+end
+
+"""
+    function taudeltaresponse
+
+    Take CDF and turn it into PDF, get lag timescale
+"""
+function taudeltaresponse()
+
+    Δ,τ = read_stepresponse()
+
+    # hard coded annual resolution, easy because don't have to normalize
+    τmax = maximum(τ)
+    tgedge = 0:floor(τmax)
+    tg = 0.5:floor(τmax)
+    return tg
+end
+
 end
