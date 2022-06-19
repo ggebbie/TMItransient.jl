@@ -212,11 +212,12 @@ function vintagedistribution(t₀,tf,Δ,τ;tmodern=2022,interp="linear")
     τf = tmodern - tf # end year
 
     # get interpolation object
-    # if interp == "linear"
-    #     itp = LinearInterpolation(τ, Δ)
-    # elseif interp == "spline"
+    if interp == "linear"
+        itp = LinearInterpolation(τ, Δ)
+    elseif interp == "spline"
+        println("warning: not implemented yet for type Field")
         itp = interpolate(τ, Δ, FritschCarlsonMonotonicInterpolation())
-#    end
+    end
     
     if isinf(t₀)
         # we know that CDF(τ=Inf) = 1.
