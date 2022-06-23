@@ -10,6 +10,17 @@ using Test
     
     A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion)
 
+    @testset "monotonicinterpolation" begin
+        using Interpolations
+        Δ,τ = read_stepresponse()
+        itp = interpolate(τ, Δ, FritschCarlsonMonotonicInterpolation())
+        itp = interpolate(τ, Δ, SteffenMonotonicInterpolation())
+        #itp = interpolate(τ, Δ, FritschButlandInterpolation())
+
+        #g = vintagedistribution(1850,2022,Δ,τ)
+
+    end
+    
     @testset "transientsimulation" begin
 
         using Interpolations, NaNMath, DifferentialEquations, LinearAlgebra, PreallocationTools
