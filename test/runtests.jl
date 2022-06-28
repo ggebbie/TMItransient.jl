@@ -10,16 +10,28 @@ using Test
     
     A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion)
 
-    @testset "monotonicinterpolation" begin
-        using Interpolations
-        Δ,τ = read_stepresponse()
-        itp = interpolate(τ, Δ, FritschCarlsonMonotonicInterpolation())
-        itp = interpolate(τ, Δ, SteffenMonotonicInterpolation())
-        #itp = interpolate(τ, Δ, FritschButlandInterpolation())
+    # @testset "monotonicinterpolation" begin
+    #     using Interpolations
+    #     Δ,τ = read_stepresponse()
 
-        #g = vintagedistribution(1850,2022,Δ,τ)
+    #     d2 = Vector{Vector{Float64}}(undef,2)
+    #     d2 = Vector{Float64}(undef,2)
+    #     t2 = Vector{Float64}(undef,2)
+    #     d2[1] = [1,2]
+    #     d2[2] = [3,4]
+    #     d2[1] = 1
+    #     d2[2] = 3
+    #     t2[1] = 1
+    #     t2[2] = 2
+        
+    #     itp = interpolate(t2, d2, FritschCarlsonMonotonicInterpolation())
+    #     itp = interpolate(τ, Δ)
+    #     itp = interpolate(τ, Δ, FritschCarlsonMonotonicInterpolation())
+    #     itp = interpolate(τ, Δ, SteffenMonotonicInterpolation())
+    #     #itp = interpolate(τ, Δ, FritschButlandInterpolation())
 
-    end
+    #     #g = vintagedistribution(1850,2022,Δ,τ)
+    # end
     
     @testset "transientsimulation" begin
 
