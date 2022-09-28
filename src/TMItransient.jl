@@ -4,7 +4,7 @@ using OrdinaryDiffEq, PreallocationTools, LinearAlgebra, NCDatasets,
     MAT, TMI, Interpolations
 
 export readopt, ces_ncwrite, varying!,
-    read_stepresponse, datadir, srcdir, vintagedistribution,
+    read_stepresponse, vintagedistribution,
     deltaresponse, taudeltaresponse, agedistribution
 
 # Define these paths by hand so that we don't
