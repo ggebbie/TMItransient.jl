@@ -71,8 +71,10 @@ using Test
         Csfc[1, :] .= 1
         τ = 1/12
         li = LinearInterpolation(tsfc, 1:length(tsfc))
-        LC = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl
-        BF = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl 
+        #LC = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl
+        #BF = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl 
+        LC = dualcache(similar(u0)) #for PreallocationTools.jl
+        BF = dualcache(similar(u0)) #for PreallocationTools.jl 
         Cb = similar(Csfc[1,:])
         surface_ind = findall(x->x[3] ==1, γ.I)
 
