@@ -144,7 +144,6 @@ function s_array(sol, γ)
     return sol_array
 end
 
-
 """
     function ces_ncwrite(γ,time,sol_array)
     Write .nc file output for commonerasim.jl 
@@ -183,7 +182,6 @@ function ces_ncwrite(γ,time,sol_array, filepath)
     v.attrib["units"] = "potential temperature anomaly"
     close(ds)
 end
-
 
 """
     stability_check(sol_array, Csfc) 

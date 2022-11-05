@@ -1,3 +1,7 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 TMItransient = "ab8155c7-aa61-46aa-9e27-6244078cebd2"
+
+[compat]
+julia = "1.7,1.8"
+TMItransient="0.1"
