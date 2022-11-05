@@ -1,10 +1,13 @@
 name = "TMItransient"
 uuid = "ab8155c7-aa61-46aa-9e27-6244078cebd2"
 authors = ["G Jake Gebbie"]
-version = "0.1.1"
+version = "0.1.4"
 
 [deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
+GoogleDrive = "91feb7a0-3508-11ea-1e8e-afea2c1c9a19"
+HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MAT = "23992714-dd62-5051-b70f-ba57cb901cac"
@@ -13,11 +16,13 @@ NaNMath = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 PreallocationTools = "d236fae5-4411-538c-8e31-a6e3d9e00b46"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
+Sundials = "c3572dad-4567-51f8-b174-8c6c989267f4"
 TMI = "582500f6-28c8-4d8f-aabe-b197735ec1d4"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-julia = "1.7"
+julia = "1.7,1.8"
+TMI="0.1.17,0.1.19"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
