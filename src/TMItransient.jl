@@ -320,14 +320,12 @@ function vintagedistribution(t₀,tf,Δ,τ;tmodern=2022,interp="linear")
     end
 end
 
-
 """
-    function agedistribution
+    function stepresponse(loc)
 
-    age distribution refers to distribution over lags, not space
-    sometimes called a transit time distribution
+    response to a Heaviside function at a `loc`
 """
-function agedistribution(loc)
+function stepresponse(loc)
 
     Δ,τ = read_stepresponse()
     ncdf = length(τ)
@@ -342,12 +340,44 @@ function agedistribution(loc)
     for tt in 1:ncdf
         Δloc[tt] = observe(Δ[tt],wis,Δ[tt].γ)[1] # kludge to convert to scalar
     end
-    println(typeof(Δloc))
+    
+    return Δloc,τ
+    
+end
+
+"""
+    function agedistribution
+
+    age distribution refers to distribution over lags, not space
+    sometimes called a transit time distribution
+"""
+function agedistribution(loc)
+
+    Δloc,τ = stepresponse(loc)
     tg, g = deltaresponse(Δloc,τ)
     
     return g
-    
 end
+
+#     Δ,τ = read_stepresponse()
+#     ncdf = length(τ)
+#     npdf = ncdf - 1
+
+#     # get weighted interpolation indices
+#     wis= Vector{Tuple{Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}}}(undef,1)
+#     #[wis[xx] = interpindex(loc[xx],Δ[xx].γ) for xx in 1]
+#     wis[1] = interpindex(loc,Δ[1].γ)
+    
+#     Δloc = Vector{Float64}(undef,ncdf)
+#     for tt in 1:ncdf
+#         Δloc[tt] = observe(Δ[tt],wis,Δ[tt].γ)[1] # kludge to convert to scalar
+#     end
+#     println(typeof(Δloc))
+#     tg, g = deltaresponse(Δloc,τ)
+    
+#     return g
+    
+# end
 
 """
     function deltaresponse
@@ -375,6 +405,8 @@ end
     function taudeltaresponse
 
     Take CDF and turn it into PDF, get lag timescale
+
+    Seems inefficient, reading file for time lag alone
 """
 function taudeltaresponse()
 
