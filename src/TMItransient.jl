@@ -297,7 +297,7 @@ end
 # Warning
 - should be a way to make Δ argument more general (more types)
 """
-function vintagedistribution(t₀,tf,Δ,τ;tmodern=2022,interp="linear")
+function vintagedistribution(t₀,tf,Δ,τ;tmodern=2023,interp="linear")
 
     τ₀ = tmodern - t₀ # transfer starting cal year to equivalent lag
     τf = tmodern - tf # end year
