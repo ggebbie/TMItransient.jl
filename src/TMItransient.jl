@@ -1,8 +1,29 @@
 module TMItransient
 
-using OrdinaryDiffEq, PreallocationTools, LinearAlgebra, NCDatasets, Interpolations, TMI, NaNMath
+using OrdinaryDiffEq
+using PreallocationTools
+using LinearAlgebra
+using NCDatasets
+using MAT
+using TMI
+using NaNMath
+using Interpolations
 
-export readopt, ces_ncwrite, varying!, setupODE,setupODE_nojac, s_array, stability_check
+export readopt, ces_ncwrite, varying!,
+    setupODE,setupODE_nojac, s_array, stability_check,
+    read_stepresponse, vintagedistribution,
+    deltaresponse, taudeltaresponse, agedistribution
+
+# Define these paths by hand so that we don't
+# have to use DrWatson
+pkgdir() = dirname(dirname(pathof(TMItransient)))
+pkgdir(args...) = joinpath(pkgdir(), args...)
+
+datadir() = joinpath(pkgdir(),"data")
+datadir(args...) = joinpath(datadir(), args...)
+
+srcdir() = joinpath(pkgdir(),"src")
+srcdir(args...) = joinpath(srcdir(), args...)
 
 """
      read surface layer
@@ -183,6 +204,220 @@ function ces_ncwrite(γ,time,sol_array, filepath)
     close(ds)
 end
 
+""" 
+    function gooddata
+    a useful one-liner
+"""
+goodtime = x -> (typeof(x) <: Number && !isnan(x))
+
+"""
+    function read_stepresponse()
+
+    read previously computed MATLAB output using shell script
+
+    Warning: hard-coded file names from a 4° x 4° TMI run
+"""
+function read_stepresponse()
+
+    TMIversion = "modern_90x45x33_GH10_GH12"
+
+    ncfile = download_ncfile(TMIversion)
+    γ = Grid(ncfile)
+
+    # next load pre-computed step function response
+    stepfile =  datadir("ttdsummary_global_13july2011.mat")
+    !isfile(stepfile) && download_stepresponse()
+
+    matfile = download_matfile(TMIversion)
+    Izyx = cartesianindex(matfile)
+
+    matobj = matopen(stepfile)
+    y = read(matobj,"Y") # CDF of step function response
+    
+    τ = vec(read(matobj,"T")) # time lag
+
+    # eliminate empty times
+    ngood = count(goodtime,sum(y,dims = 2))
+
+    Δ = Vector{TMI.Field}(undef,ngood)
+    τ = τ[1:ngood]
+    
+    for tt in 1:ngood
+
+        if iszero(τ[tt])
+            # set to zero so that mixed-layer goes from zero to one
+            # in the first year
+            tracer = tracerinit(zeros(sum(γ.wet)), Izyx, γ.wet)
+
+        else
+            # initialize a 3D tracer array where zyx format
+            # is transferred to xyz format
+            tracer = tracerinit(y[tt,:], Izyx, γ.wet)
+        end
+        
+        # construct a Field type
+        Δ[tt] = TMI.Field(tracer,γ,:Δ,"step response","dimensionless")
+        
+    end
+    
+    return Δ, τ
+end
+
+function download_stepresponse()
+    shellscript = srcdir("read_stepresponse.sh")
+    run(`sh $shellscript`)
+
+    # move the file to datadir
+    println(joinpath(pwd(),"ttdsummary_global_13july2011.mat"))
+    !isfile(joinpath(pwd(),"ttdsummary_global_13july2011.mat"))
+
+    !isdir(datadir()) && mkdir(datadir())
+    mv(joinpath(pwd(),"ttdsummary_global_13july2011.mat"),
+       datadir("ttdsummary_global_13july2011.mat"))
+
+end
+
+"""
+    function vintagedistribution(t₀,tf,Δ,τ,tmodern=2022,interp="linear")
+
+    percentage of water in the modern ocean
+    from a vintage defined by the calendar year interval
+    t₀ [cal yr CE] => tf [cal yr CE]
+
+# Arguments
+- `t₀`: Starting calendar year of vintage, e.g., 1450 CE
+- `tf`: final calendar year of vintage, e.g., 1850 CE
+- `Δ::Vector{Field}`: Step function response
+- `τ = Vector{Float64}`: time lags associated with step response
+- `tmodern=2022`: modern calendar year
+- `interp=linear`: or can be "spline"
+# Output
+- `g::Field`: 3D distribution of vintage contribution
+
+# Warning
+- should be a way to make Δ argument more general (more types)
+"""
+function vintagedistribution(t₀,tf,Δ,τ;tmodern=2023,interp="linear")
+
+    τ₀ = tmodern - t₀ # transfer starting cal year to equivalent lag
+    τf = tmodern - tf # end year
+
+    # get interpolation object
+    if interp == "linear"
+        itp = LinearInterpolation(τ, Δ)
+    elseif interp == "spline"
+        println("warning: not implemented yet for type Field")
+        itp = interpolate(τ, Δ, FritschCarlsonMonotonicInterpolation())
+    end
+    
+    if isinf(t₀)
+        # we know that CDF(τ=Inf) = 1.
+        # return g = ones(Δ[1].γ) - interp_linear(τf)
+        return g = ones(Δ[1].γ) - itp(τf)
+    else
+        #return g = interp_linear(τ₀) - interp_linear(τf)
+        return g = itp(τ₀) - itp(τf)
+    end
+end
+
+"""
+    function stepresponse(loc)
+
+    response to a Heaviside function at a `loc`
+"""
+function stepresponse(loc)
+
+    Δ,τ = read_stepresponse()
+    ncdf = length(τ)
+    npdf = ncdf - 1
+
+    # get weighted interpolation indices
+    wis= Vector{Tuple{Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}}}(undef,1)
+    #[wis[xx] = interpindex(loc[xx],Δ[xx].γ) for xx in 1]
+    wis[1] = interpindex(loc,Δ[1].γ)
+    
+    Δloc = Vector{Float64}(undef,ncdf)
+    for tt in 1:ncdf
+        Δloc[tt] = observe(Δ[tt],wis,Δ[tt].γ)[1] # kludge to convert to scalar
+    end
+    
+    return Δloc,τ
+    
+end
+
+"""
+    function agedistribution
+
+    age distribution refers to distribution over lags, not space
+    sometimes called a transit time distribution
+"""
+function agedistribution(loc)
+
+    Δloc,τ = stepresponse(loc)
+    tg, g = deltaresponse(Δloc,τ)
+    
+    return g
+end
+
+#     Δ,τ = read_stepresponse()
+#     ncdf = length(τ)
+#     npdf = ncdf - 1
+
+#     # get weighted interpolation indices
+#     wis= Vector{Tuple{Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}}}(undef,1)
+#     #[wis[xx] = interpindex(loc[xx],Δ[xx].γ) for xx in 1]
+#     wis[1] = interpindex(loc,Δ[1].γ)
+    
+#     Δloc = Vector{Float64}(undef,ncdf)
+#     for tt in 1:ncdf
+#         Δloc[tt] = observe(Δ[tt],wis,Δ[tt].γ)[1] # kludge to convert to scalar
+#     end
+#     println(typeof(Δloc))
+#     tg, g = deltaresponse(Δloc,τ)
+    
+#     return g
+    
+# end
+
+"""
+    function deltaresponse
+
+    Take CDF and turn it into PDF
+"""
+function deltaresponse(Δ,τΔ)
+
+    # hard coded annual resolution, easy because don't have to normalize
+    τmax = maximum(τΔ)
+    tgedge = 0:floor(τmax)
+    tg = 0.5:floor(τmax)
+
+    #    interp_linear = LinearInterpolation(τΔ, Δ)
+    # Δhires = interp_linear(tgedge)
+
+    itp = interpolate(τΔ, Δ, FritschCarlsonMonotonicInterpolation())
+    Δhires = itp.(tgedge)
+    g = diff(Δhires)
+        
+    return tg, g
+end
+
+"""
+    function taudeltaresponse
+
+    Take CDF and turn it into PDF, get lag timescale
+
+    Seems inefficient, reading file for time lag alone
+"""
+function taudeltaresponse()
+
+    Δ,τ = read_stepresponse()
+
+    # hard coded annual resolution, easy because don't have to normalize
+    τmax = maximum(τ)
+    tgedge = 0:floor(τmax)
+    tg = 0.5:floor(τmax)
+    return tg
+end
 """
     stability_check(sol_array, Csfc) 
     checks stability of ODE output 
