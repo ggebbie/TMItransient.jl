@@ -12,8 +12,8 @@
 =#
 
 using Revise, TMI
-#using LinearAlgebra
-#using OrdinaryDiffEq
+using LinearAlgebra
+using OrdinaryDiffEq
 #using Interpolations
 #using PyPlot
 #using NaNMath
@@ -46,8 +46,8 @@ c₀.tracer[TMI.wet(c₀)] = B* b.tracer[b.wet]
 #c0 = B * dsfc 
 
 u0 = c₀
-du = zeros(γ)
-tspan = (0.0, 50.0)
+#du = zeros(γ)
+tspan = (0.0, 4000.0)
 
 #Solving differential equation
 #NOTE: for DifferentialEquations.jl to work, follow naming conventions in docs
@@ -55,37 +55,40 @@ tspan = (0.0, 50.0)
 f(du,u,p,t) = mul!(du, L, u) #this avoids allocating a new array for each iteration
 
 #Solve diff eq
-operator = DiffEqArrayOperator(L)
+operator = DiffEqArrayOperator(L);
 #isconstant(operator) # not currently working
 func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array 
-prob = ODEProblem(func, u0, tspan)
+prob = ODEProblem(func, u0, tspan) # Field type
+prob = ODEProblem(func, u0.tracer[TMI.wet(u0)], tspan) # Vector type
 #prob = ODEProblem(func, u0, tspan,p)
 println("Solving ode")
 #solve using QNDF alg - tested against other alg and works fastest 
-@time sol = solve(prob,QNDF(),abstol = 1e-4,reltol=1e-4,saveat =tspan[1]:tspan[2])
+@time sol = solve(prob,QNDF(),abstol = 1e-4,reltol=1e-4,saveat =tspan[1]:1000.0:tspan[2])
 println("ode solved")
 
+timeseries = [sol.u[t][50000] for t = eachindex(sol.u)]
+
 #put sol into time x lon x lat x depth 
-sol_array = zeros((length(sol.t),size(γ.wet)[1],size(γ.wet)[2],size(γ.wet)[3]))
-[sol_array[i,:,:,:] = vec2fld(sol.u[i],γ.I) for i ∈ 1:length(sol.t)]
+# sol_array = zeros((length(sol.t),size(γ.wet)[1],size(γ.wet)[2],size(γ.wet)[3]))
+# [sol_array[i,:,:,:] = vec2fld(sol.u[i],γ.I) for i ∈ 1:length(sol.t)]
 
-#stability check
-stable = true ? NaNMath.maximum(sol_array) < 1.000001  && NaNMath.minimum(sol_array) > -0.000001 : false
-println("stable: " *string(stable))
+# #stability check
+# #stable = true ? NaNMath.maximum(sol_array) < 1.000001  && NaNMath.minimum(sol_array) > -0.000001 : false
+# #println("stable: " *string(stable))
 
-#____PLOTTING____
-#longitudinal plots
-#lon_index = 85
-#dyeplot(γ.lat, γ.depth, sol_array[25, lon_index, :, :]', 0:0.05:1.05)
+# #____PLOTTING____
+# #longitudinal plots
+# #lon_index = 85
+# #dyeplot(γ.lat, γ.depth, sol_array[25, lon_index, :, :]', 0:0.05:1.05)
 
-lon_section = 330; # only works if exact
-lims = 0:0.05:3.0
-snapshot = TMI.Field(sol_array[25,:,:,:],γ)
-label = "Some quantity [units]"
-sectionplot(snapshot,lon_section,lims,titlelabel=label)
+# lon_section = 330; # only works if exact
+# lims = 0:0.05:3.0
+# snapshot = TMI.Field(sol_array[25,:,:,:],γ)
+# label = "Some quantity [units]"
+# sectionplot(snapshot,lon_section,lims,titlelabel=label)
 
-# plot a section at 330 east longitude (i.e., 30 west)
-lon_section = 330 # only works if exact
-lims = 0:5:100
-tlabel = region * " water-mass fraction [%]"
-sectionplot(100g,lon_section,lims,titlelabel = tlabel)
+# # plot a section at 330 east longitude (i.e., 30 west)
+# lon_section = 330 # only works if exact
+# lims = 0:5:100
+# tlabel = region * " water-mass fraction [%]"
+# sectionplot(100g,lon_section,lims,titlelabel = tlabel)

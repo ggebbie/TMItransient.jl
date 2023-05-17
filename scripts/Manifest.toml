@@ -1133,9 +1133,7 @@ version = "5.10.1+6"
 
 [[deps.TMI]]
 deps = ["CSV", "Conda", "DataFrames", "DataStructures", "Distances", "Distributions", "Downloads", "GibbsSeaWater", "GoogleDrive", "Interpolations", "LaTeXStrings", "LineSearches", "LinearAlgebra", "MAT", "NCDatasets", "NetCDF", "NetCDF_jll", "Optim", "Pkg", "Revise", "SparseArrays", "Statistics", "StatsBase", "UnicodePlots"]
-git-tree-sha1 = "ac74bf54d8eb73166e31d6774d3ff6a0ff0d00c6"
-repo-rev = "main"
-repo-url = "https://github.com/ggebbie/TMI.jl"
+path = "/home/gebbie/projects/TMI.jl/"
 uuid = "582500f6-28c8-4d8f-aabe-b197735ec1d4"
 version = "0.1.28"
 
