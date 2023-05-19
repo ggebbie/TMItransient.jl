@@ -473,20 +473,32 @@ function globalmean_stepresponse(TMIversion,region,γ,L,B,τ)
     # possible algs:
     # QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
     #@time sol = solve(prob,QNDF(),abstol = 1e-4,reltol=1e-4,saveat =tspan[2])
-    @time sol = solve(prob,QNDF(),saveat =tspan[2])
+    @time sol = solve(prob,QNDF(),saveat = τ)
     println("ode solved")
 
     # put sol into Field
+    # solfld = zeros(γ)
+    # Dmean = zeros(length(τ))
+    # for (ii,tt) in enumerate(τ)
+    #     if iszero(tt)
+    #         Dmean[ii] = 0.0 # make sure to start at exactly zero
+    #     else
+    #         solfld.tracer[wet(solfld)] = sol(tt)
+    #         Dmean[ii] = mean(solfld)
+    #     end
+    # end
+    #put sol into Field
     solfld = zeros(γ)
     Dmean = zeros(length(τ))
     for (ii,tt) in enumerate(τ)
         if iszero(tt)
             Dmean[ii] = 0.0 # make sure to start at exactly zero
         else
-            solfld.tracer[wet(solfld)] = sol(tt)
+            solfld.tracer[wet(solfld)] = sol[ii]
             Dmean[ii] = mean(solfld)
         end
     end
+
     return Dmean
 end
 
