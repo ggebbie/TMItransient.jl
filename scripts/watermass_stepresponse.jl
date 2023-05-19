@@ -14,6 +14,8 @@
 using Revise, TMI
 using LinearAlgebra
 using OrdinaryDiffEq
+using Statistics
+using Plots
 #using Interpolations
 #using PyPlot
 #using NaNMath
@@ -41,34 +43,51 @@ c₀ = zeros(γ)
 # update d with the boundary condition b
 #setboundarycondition!(c,b)
 
-c₀.tracer[TMI.wet(c₀)] = B* b.tracer[b.wet]
+#c₀ = B* b.tracer[b.wet]
+c₀ = B* vec(b)
 #initial conditions are the surface patch = 1, propagated down to the bottom of the mixed layer, which we get from B
 #c0 = B * dsfc 
 
-u0 = c₀
+#u0 = c₀
 #du = zeros(γ)
-tspan = (0.0, 50.0)
+tspan = (0.0, 4000.0)
 
 #Solving differential equation
-#NOTE: for DifferentialEquations.jl to work, follow naming conventions in docs
-
-f(du,u,p,t) = mul!(du, L, u) #this avoids allocating a new array for each iteration
+f(du,u,p,t) = mul!(du, L, u) #avoid allocation
 
 #Solve diff eq
-#operator = DiffEqArrayOperator(L); # too big of an initial shock
-
+#operator = DiffEqArrayOperator(L); # too big of an initial shock = unstable
 #isconstant(operator) # not currently working
-func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array 
-prob = ODEProblem(func, u0, tspan) # Field type
-prob = ODEProblem(func, u0.tracer[TMI.wet(u0)], tspan) # Vector type
 #prob = ODEProblem(operator, u0.tracer[TMI.wet(u0)], tspan) # too big of an initial shock
-#prob = ODEProblem(func, u0, tspan,p)
-println("Solving ode")
-#solve using QNDF alg - tested against other alg and works fastest 
-@time sol = solve(prob,QNDF(),abstol = 1e-4,reltol=1e-4,saveat =tspan[1]:tspan[2])
+
+func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array 
+prob = ODEProblem(func, c₀, tspan) # Field type
+#prob = ODEProblem(func, u0.tracer[TMI.wet(u0)], tspan) # Vector type
+#prob = ODEProblem(func, c₀.tracer[wet(c₀)], tspan) # 
+# QNDF alg tested and fastest 
+@time sol = solve(prob,QNDF(),abstol = 1e-4,reltol=1e-4,saveat =tspan[2])
 println("ode solved")
 
-timeseries = [sol.u[t][50000] for t = eachindex(sol.u)]
+## only really care about global-response to global mean.
+
+# put sol into Field
+solfld = zeros(γ)
+τ = 1:tspan[2]
+Gmean = zeros(length(τ))
+for (ii,tt) in enumerate(τ)
+    solfld.tracer[wet(solfld)] = sol(tt)
+    Gmean[ii] = mean(solfld)
+end
+
+## get global mean CDF
+gr()
+plot(τ,Gmean)
+
+## take differences of global mean CDF to get G_mean
+
+
+
+#timeseries = [sol.u[t][50000] for t = eachindex(sol.u)]
 
 #put sol into time x lon x lat x depth 
 # sol_array = zeros((length(sol.t),size(γ.wet)[1],size(γ.wet)[2],size(γ.wet)[3]))

@@ -8,7 +8,7 @@ using Test
     #TMIversion = "modern_180x90x33_GH10_GH12"
     #TMIversion = "modern_90x45x33_unpub12"
     
-    A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion)
+    A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion);
 
     # @testset "monotonicinterpolation" begin
     #     using Interpolations
@@ -32,7 +32,67 @@ using Test
 
     #     #g = vintagedistribution(1850,2022,Δ,τ)
     # end
-    
+
+    @testset "watermass_stepresponse" begin
+        #using Revise, TMI
+        using LinearAlgebra
+        using OrdinaryDiffEq
+        #using Interpolations
+        #using PyPlot
+        #using NaNMath
+        #using PythonPlot
+
+        #TMIversion = "modern_90x45x33_GH10_GH12"
+        #A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion);
+
+        # read a water-mass surface patch from these choices
+        list = ("GLOBAL","ANT","SUBANT",
+                "NATL","NPAC","TROP","ARC",
+                "MED","ROSS","WED","LAB","GIN",
+                "ADEL","SUBANTATL","SUBANTPAC","SUBANTIND",
+                "TROPATL","TROPPAC","TROPIND")
+
+        # choose water mass (i.e., surface patch) of interest
+        region = list[1]
+
+        # do numerical analysis
+        b = TMI.surfaceregion(TMIversion,region,γ)
+
+        # preallocate initial condition Field
+        #c₀ = zeros(γ)
+
+        # update d with the boundary condition b
+        #setboundarycondition!(c,b)
+
+        #c₀.tracer[wet(c₀)] = B* vec(b)
+        #initial conditions are the surface patch = 1, propagated down to the bottom of the mixed layer, which we get from B
+        c₀ = B * vec(b) 
+        u0 = c₀
+        #du = zeros(γ)
+        tspan = (0.0, 10.0)
+
+        f(du,u,p,t) = mul!(du, L, u) #this avoids allocating a new array for each iteration
+
+        #Solve diff eq
+        #operator = DiffEqArrayOperator(L); # too big of an initial shock
+        #isconstant(operator) # not currently working
+
+        func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array 
+
+        prob = ODEProblem(func, u0, tspan) # Field type
+        #prob = ODEProblem(func, vec(c₀), tspan) # Vector type
+        
+        #prob = ODEProblem(operator, u0.tracer[TMI.wet(u0)], tspan) # too big of an initial shock
+        #prob = ODEProblem(func, u0, tspan,p)
+        println("Solving ode")
+        #solve using QNDF alg - tested against other alg and works fastest 
+        @time sol = solve(prob,QNDF(),abstol = 1e-4,reltol=1e-4,saveat=tspan[end])
+        println("ode solved")
+
+        timeseries = [sol.u[t][50000] for t = eachindex(sol.u)]
+
+    end
+
     @testset "transientsimulation" begin
 
         using Interpolations, NaNMath, DifferentialEquations, LinearAlgebra, PreallocationTools, Sundials

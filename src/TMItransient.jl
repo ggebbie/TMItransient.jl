@@ -6,13 +6,38 @@ using LinearAlgebra
 using NCDatasets
 using MAT
 using TMI
-using NaNMath
+#using NaNMath
 using Interpolations
 
 export readopt, ces_ncwrite, varying!,
     setupODE,setupODE_nojac, s_array, stability_check,
     read_stepresponse, vintagedistribution,
-    deltaresponse, taudeltaresponse, agedistribution
+    deltaresponse, taudeltaresponse, agedistribution,
+    EvolvingField
+
+"""
+    struct EvolvingField
+
+    This structure permits the grid to be 
+    automatically passed to functions with
+    the evolving tracer field.
+
+    This structure assumes the Tracer type to be 
+    three-dimensional with an additional vector dimension for time.
+
+    tracer::Vector{Array{T,3}}
+    γ::Grid
+    name::Symbol
+    longname::String
+    units::String
+"""
+struct EvolvingField{T}
+    tracer::Vector{Array{T,3}}
+    γ::Grid
+    name::Symbol
+    longname::String
+    units::String
+end
 
 # Define these paths by hand so that we don't
 # have to use DrWatson
@@ -429,7 +454,7 @@ end
 - prints true or false 
 """
 function stability_check(sol_array, Csfc) 
-    stable = true ? NaNMath.maximum(sol_array) < NaNMath.maximum(Csfc) && NaNMath.minimum(sol_array) > NaNMath.minimum(Csfc) : false
+    #stable = true ? NaNMath.maximum(sol_array) < NaNMath.maximum(Csfc) && NaNMath.minimum(sol_array) > NaNMath.minimum(Csfc) : false
     println("stable: " *string(stable))
 end
 
