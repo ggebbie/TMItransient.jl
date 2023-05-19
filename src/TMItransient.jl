@@ -8,12 +8,13 @@ using MAT
 using TMI
 #using NaNMath
 using Interpolations
+using Statistics
 
 export readopt, ces_ncwrite, varying!,
     setupODE,setupODE_nojac, s_array, stability_check,
     read_stepresponse, vintagedistribution,
     deltaresponse, taudeltaresponse, agedistribution,
-    EvolvingField
+    EvolvingField, globalmean_stepresponse
 
 """
     struct EvolvingField
@@ -458,5 +459,29 @@ function stability_check(sol_array, Csfc)
     println("stable: " *string(stable))
 end
 
+function globalmean_stepresponse(TMIversion,region,γ,L,B,tspan)
+
+    b = TMI.surfaceregion(TMIversion,region,γ)
+    c₀ = zeros(γ) # preallocate initial condition Field
+    c₀ = B* vec(b)
+    f(du,u,p,t) = mul!(du, L, u) #avoid allocation
+    func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array 
+    prob = ODEProblem(func, c₀, tspan) # Field type
+    # possible algs:
+    # QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
+    #@time sol = solve(prob,QNDF(),abstol = 1e-4,reltol=1e-4,saveat =tspan[2])
+    @time sol = solve(prob,QNDF(),saveat =tspan[2])
+    println("ode solved")
+
+    # put sol into Field
+    solfld = zeros(γ)
+    τ = 1:tspan[2]
+    Gmean = zeros(length(τ))
+    for (ii,tt) in enumerate(τ)
+        solfld.tracer[wet(solfld)] = sol(tt)
+        Gmean[ii] = mean(solfld)
+    end
+    return Gmean
+end
 
 end

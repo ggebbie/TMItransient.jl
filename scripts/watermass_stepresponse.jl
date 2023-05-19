@@ -13,9 +13,10 @@
 
 using Revise, TMI
 using LinearAlgebra
-using OrdinaryDiffEq
-using Statistics
+#using OrdinaryDiffEq
+#using Statistics
 using Plots
+using TMItransient
 #using Interpolations
 #using PyPlot
 #using NaNMath
@@ -33,6 +34,13 @@ list = ("GLOBAL","ANT","SUBANT",
 
 # choose water mass (i.e., surface patch) of interest
 region = list[1]
+tspan = (0.0, 4000.0)
+
+# replace with function call
+# add alg=QNDF() as optional argument
+Gmean = globalmean_stepresponse(TMIversion,region,γ,L,B,tspan)
+
+## end of tested work
 
 # do numerical analysis
 b = TMI.surfaceregion(TMIversion,region,γ)
@@ -50,7 +58,7 @@ c₀ = B* vec(b)
 
 #u0 = c₀
 #du = zeros(γ)
-tspan = (0.0, 4000.0)
+tspan = (0.0, 1.0)
 
 #Solving differential equation
 f(du,u,p,t) = mul!(du, L, u) #avoid allocation
@@ -64,8 +72,11 @@ func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array
 prob = ODEProblem(func, c₀, tspan) # Field type
 #prob = ODEProblem(func, u0.tracer[TMI.wet(u0)], tspan) # Vector type
 #prob = ODEProblem(func, c₀.tracer[wet(c₀)], tspan) # 
-# QNDF alg tested and fastest 
-@time sol = solve(prob,QNDF(),abstol = 1e-4,reltol=1e-4,saveat =tspan[2])
+# QNDF alg tested and fastest
+
+# possible algs:
+# QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
+@time sol = solve(prob,TRBDF2(),abstol = 1e-4,reltol=1e-4,saveat =tspan[2])
 println("ode solved")
 
 ## only really care about global-response to global mean.
