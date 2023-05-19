@@ -40,6 +40,8 @@ tspan = (0.0, 4000.0)
 # add alg=QNDF() as optional argument
 Gmean = globalmean_stepresponse(TMIversion,region,γ,L,B,tspan)
 
+# lando: neither plotlyjs nor gr working
+
 ## end of tested work
 
 # do numerical analysis
