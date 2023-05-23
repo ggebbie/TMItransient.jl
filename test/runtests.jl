@@ -11,14 +11,38 @@ using Test
     A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion);
 
     @testset "vintage test" begin
+
+        using Interpolations
         Δ,τ = read_stepresponse()
-        g = vintagedistribution(1850,2022,Δ,τ)
+        g = vintagedistribution(2015,2020,Δ,τ)
 
         @test maximum(g) ≤ 1.0
         #@test minimum(g) ≥ 0.0 # fails for MATLAB
 
 
-        
+        g2 = vintagedistribution(TMIversion,γ,L,B,2015,2020)
+        @test maximum(g2) ≤ 1.0
+        #@test minimum(g) ≥ 0.0 # fails for Julia
+
+        # compare g, g2 at N random points
+
+        N = 2
+        # get random locations that are wet (ocean)
+        locs = Vector{Tuple{Float64,Float64,Float64}}(undef,N)
+        [locs[i] = wetlocation(γ) for i in eachindex(locs)]
+
+        # get weighted interpolation indices
+        wis= Vector{Tuple{Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}}}(undef,N)
+        [wis[i] = interpindex(locs[i],γ) for i in 1:N]
+
+        y1 = observe(g,wis,γ)
+        y2 = observe(g2,wis,γ)
+
+        # relative difference between MATLAB and Julia computations
+        for tt in 1:N
+            @test 100*abs(y1[tt] - y2[tt])/(y1[tt] + y2[tt]) < 1.0 # percent
+        end
+
     end
 
     # @testset "monotonicinterpolation" begin

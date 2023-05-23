@@ -349,28 +349,50 @@ function vintagedistribution(t₀,tf,Δ,τ;tmodern=2023,interp="linear")
 end
 
 # Try to compute without using MATLAB file
-function vintagedistribution(t₀,tf)
+function vintagedistribution(TMIversion,γ::TMI.Grid,L,B,t₀,tf; tmodern= 2023)
 
     τ₀ = tmodern - t₀ # transfer starting cal year to equivalent lag
     τf = tmodern - tf # end year
 
+    #  Δτ = diff(τ)[1]
+
+    # vintages defined relative to GLOBAL surface
+    b = TMI.surfaceregion(TMIversion,"GLOBAL",γ)
     
-    # get interpolation object
-    if interp == "linear"
-        itp = LinearInterpolation(τ, Δ)
-    elseif interp == "spline"
-        println("warning: not implemented yet for type Field")
-        itp = interpolate(τ, Δ, FritschCarlsonMonotonicInterpolation())
-    end
+    #c₀ = zeros(γ) # preallocate initial condition Field
+    c₀ = B* vec(b)
+    f(du,u,p,t) = mul!(du, L, u) #avoid allocation
+    func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array
+    tspan = (0.0,τ₀)
+    prob = ODEProblem(func, c₀, tspan) # Field type
+
+    # possible algs:
+    # QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
+    u = solve(prob,QNDF(),saveat=(τf,τ₀))
+
+    g = zeros(γ)
+    g.tracer[wet(g)] = u[2] - u[1]
+
+    return g
+
+    # ### old version
     
-    if isinf(t₀)
-        # we know that CDF(τ=Inf) = 1.
-        # return g = ones(Δ[1].γ) - interp_linear(τf)
-        return g = ones(Δ[1].γ) - itp(τf)
-    else
-        #return g = interp_linear(τ₀) - interp_linear(τf)
-        return g = itp(τ₀) - itp(τf)
-    end
+    # # get interpolation object
+    # if interp == "linear"
+    #     itp = LinearInterpolation(τ, Δ)
+    # elseif interp == "spline"
+    #     println("warning: not implemented yet for type Field")
+    #     itp = interpolate(τ, Δ, FritschCarlsonMonotonicInterpolation())
+    # end
+    
+    # if isinf(t₀)
+    #     # we know that CDF(τ=Inf) = 1.
+    #     # return g = ones(Δ[1].γ) - interp_linear(τf)
+    #     return g = ones(Δ[1].γ) - itp(τf)
+    # else
+    #     #return g = interp_linear(τ₀) - interp_linear(τf)
+    #     return g = itp(τ₀) - itp(τf)
+    # end
 end
 
 """
