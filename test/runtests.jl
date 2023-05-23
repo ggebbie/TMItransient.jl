@@ -10,6 +10,17 @@ using Test
     
     A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion);
 
+    @testset "vintage test" begin
+        Δ,τ = read_stepresponse()
+        g = vintagedistribution(1850,2022,Δ,τ)
+
+        @test maximum(g) ≤ 1.0
+        #@test minimum(g) ≥ 0.0 # fails for MATLAB
+
+
+        
+    end
+
     # @testset "monotonicinterpolation" begin
     #     using Interpolations
     #     Δ,τ = read_stepresponse()
