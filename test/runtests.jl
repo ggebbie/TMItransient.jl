@@ -58,15 +58,23 @@ using Test
         τ = 0:2
         # replace with function call
         # add alg=QNDF() as optional argument
-        D̄ = globalmean_stepresponse(TMIversion,region,γ,L,B,τ) # CDF
 
-        #pushfirst!(Dmean,0.0)
+        @time D̄ = globalmean_stepresponse(TMIversion,region,γ,L,B,τ) # CDF
+
         # should monotonically increase
         @test sum(diff(D̄) .≥ 0) == length(D̄) - 1
 
         Ḡ,tḠ = globalmean_impulseresponse(TMIversion,region,γ,L,B,τ)
 
+        # Ḡ should be non-negative
         @test sum(Ḡ .≥ 0) == length(Ḡ)
+
+        # Ḡ should add to something less than unity
+        @test sum(Ḡ) ≤ 1.0
+
+        # compare to reading same thing from MATLAB output.
+
+        
     end
 
     # @testset "transientsimulation" begin
