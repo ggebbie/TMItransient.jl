@@ -539,9 +539,28 @@ function globalmean_stepresponse(TMIversion,region,γ,L,B,τ)
 end
 
 #globalmean_impulseresponse(TMIversion,region,γ,L,B,τ) = (diff(globalmean_stepresponse(TMIversion,region,γ,L,B,τ)),(τ[1:end-1]+τ[2:end])./2)
+"""
+    function globalmean_impulseresponse
 
-globalmean_impulseresponse(TMIversion,region,γ,L,B,τ) = globalmean_impulseresponse(globalmean_stepresponse(TMIversion,region,γ,L,B,τ),τ)
+    Ḡ: satisfied ∫₀^∞ Ḡ(τ) dτ = 1
 
-globalmean_impulseresponse(D̄,τ) = (diff(D̄),(τ[1:end-1]+τ[2:end])./2)
+    `alg`: centered or leapfrog
+
+    Does leapfrog satisfy normalization?
+"""
+globalmean_impulseresponse(TMIversion,region,γ,L,B,τ;alg=:centered) = globalmean_impulseresponse(globalmean_stepresponse(TMIversion,region,γ,L,B,τ),τ,alg=alg)
+function globalmean_impulseresponse(D̄,τ;alg=:centered)
+    if alg == :centered
+        ihi = 2:length(D̄)
+        ilo = 1:(length(D̄)-1)
+    elseif alg == :leapfrog
+        ihi = 3:length(D̄)
+        ilo = 1:(length(D̄)-2)
+    end
+    Δτ = (τ[ihi]-τ[ilo])
+    Ḡ = (D̄[ihi] - D̄[ilo])./Δτ
+    τ = (τ[ihi] + τ[ilo])./2
+    return Ḡ,τ
+end
 
 end

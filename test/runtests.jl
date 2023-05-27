@@ -90,7 +90,7 @@ using Test
         # choose water mass (i.e., surface patch) of interest
         region = list[1]
         #tspan = (0.0, 5.0)
-        τ = 0:2
+        τ = 0:6
         # replace with function call
         # add alg=QNDF() as optional argument
 
@@ -99,8 +99,11 @@ using Test
         # should monotonically increase
         @test sum(diff(D̄) .≥ 0) == length(D̄) - 1
 
-        Ḡ,tḠ = globalmean_impulseresponse(TMIversion,region,γ,L,B,τ)
-
+        Ḡ,tḠ = globalmean_impulseresponse(TMIversion,region,γ,L,B,τ,alg=:centered)
+        #Ḡ2,tḠ2 = globalmean_impulseresponse(TMIversion,region,γ,L,B,τ,alg=:leapfrog)
+        #Ḡ3,tḠ3 = globalmean_impulseresponse(D̄,τ,alg=:leapfrog)
+        #jldsave("Gbar_TMI_90x45x33_GH10_GH12.jld2";Ḡ,tḠ)
+        
         # Ḡ should be non-negative
         @test sum(Ḡ .≥ 0) == length(Ḡ)
 
