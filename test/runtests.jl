@@ -1,5 +1,6 @@
 using TMItransient, TMI 
 using Test
+using Statistics
 
 @testset "TMItransient.jl" begin
     # Write your tests here.
@@ -8,7 +9,7 @@ using Test
     #TMIversion = "modern_180x90x33_GH10_GH12"
     #TMIversion = "modern_90x45x33_unpub12"
     
-    A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion);
+    A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion,compute_lu=false);
 
     @testset "vintage test" begin
 
@@ -205,5 +206,5 @@ using Test
     #         @test stable
     #         println("Varying case stable: ", stable)
     #     end       
-    end
+    #end
 end
