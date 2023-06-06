@@ -557,7 +557,7 @@ function globalmean_impulseresponse(D̄,τ;alg=:centered)
         ihi = 3:length(D̄)
         ilo = 1:(length(D̄)-2)
     end
-    Δτ = (τ[ihi]-τ[ilo])
+    Δτ = τ[ihi]-τ[ilo]
     Ḡ = (D̄[ihi] - D̄[ilo])./Δτ
     τ = (τ[ihi] + τ[ilo])./2
     return Ḡ,τ
