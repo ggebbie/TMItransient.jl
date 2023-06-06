@@ -91,7 +91,7 @@ using Statistics
         # choose water mass (i.e., surface patch) of interest
         region = list[1]
         #tspan = (0.0, 5.0)
-        τ = 0:6
+        τ = 0:4
         # replace with function call
         # add alg=QNDF() as optional argument
 
