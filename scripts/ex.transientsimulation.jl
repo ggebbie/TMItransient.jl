@@ -11,11 +11,16 @@
  Solves dc/dt = Lu + Bf 
 =#
 
-using Revise, TMI, Interpolations, PyPlot
-using NaNMath, DifferentialEquations, LinearAlgebra
+using Revise, TMI
+#using LinearAlgebra
+#using OrdinaryDiffEq
+#using Interpolations
+#using PyPlot
+#using NaNMath
+#using PythonPlot
 
 TMIversion = "modern_90x45x33_GH10_GH12"
-A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion)
+A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion);
 
 #In MATLAB code: make_initial_condition 
 latbox = [50,60]

@@ -6,13 +6,41 @@ using LinearAlgebra
 using NCDatasets
 using MAT
 using TMI
-using NaNMath
+#using NaNMath
 using Interpolations
+using Statistics
 
 export readopt, ces_ncwrite, varying!,
     setupODE,setupODE_nojac, s_array, stability_check,
     read_stepresponse, vintagedistribution,
-    deltaresponse, taudeltaresponse, agedistribution
+    deltaresponse, taudeltaresponse, agedistribution,
+    EvolvingField,
+    globalmean_stepresponse,
+    globalmean_impulseresponse
+
+"""
+    struct EvolvingField
+
+    This structure permits the grid to be 
+    automatically passed to functions with
+    the evolving tracer field.
+
+    This structure assumes the Tracer type to be 
+    three-dimensional with an additional vector dimension for time.
+
+    tracer::Vector{Array{T,3}}
+    γ::Grid
+    name::Symbol
+    longname::String
+    units::String
+"""
+struct EvolvingField{T}
+    tracer::Vector{Array{T,3}}
+    γ::Grid
+    name::Symbol
+    longname::String
+    units::String
+end
 
 # Define these paths by hand so that we don't
 # have to use DrWatson
@@ -320,6 +348,53 @@ function vintagedistribution(t₀,tf,Δ,τ;tmodern=2023,interp="linear")
     end
 end
 
+# Try to compute without using MATLAB file
+function vintagedistribution(TMIversion,γ::TMI.Grid,L,B,t₀,tf; tmodern= 2023)
+
+    τ₀ = tmodern - t₀ # transfer starting cal year to equivalent lag
+    τf = tmodern - tf # end year
+
+    #  Δτ = diff(τ)[1]
+
+    # vintages defined relative to GLOBAL surface
+    b = TMI.surfaceregion(TMIversion,"GLOBAL",γ)
+    
+    #c₀ = zeros(γ) # preallocate initial condition Field
+    c₀ = B* vec(b)
+    f(du,u,p,t) = mul!(du, L, u) #avoid allocation
+    func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array
+    tspan = (0.0,τ₀)
+    prob = ODEProblem(func, c₀, tspan) # Field type
+
+    # possible algs:
+    # QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
+    u = solve(prob,QNDF(),saveat=(τf,τ₀))
+
+    g = zeros(γ)
+    g.tracer[wet(g)] = u[2] - u[1]
+
+    return g
+
+    # ### old version
+    
+    # # get interpolation object
+    # if interp == "linear"
+    #     itp = LinearInterpolation(τ, Δ)
+    # elseif interp == "spline"
+    #     println("warning: not implemented yet for type Field")
+    #     itp = interpolate(τ, Δ, FritschCarlsonMonotonicInterpolation())
+    # end
+    
+    # if isinf(t₀)
+    #     # we know that CDF(τ=Inf) = 1.
+    #     # return g = ones(Δ[1].γ) - interp_linear(τf)
+    #     return g = ones(Δ[1].γ) - itp(τf)
+    # else
+    #     #return g = interp_linear(τ₀) - interp_linear(τf)
+    #     return g = itp(τ₀) - itp(τf)
+    # end
+end
+
 """
     function stepresponse(loc)
 
@@ -429,9 +504,63 @@ end
 - prints true or false 
 """
 function stability_check(sol_array, Csfc) 
-    stable = true ? NaNMath.maximum(sol_array) < NaNMath.maximum(Csfc) && NaNMath.minimum(sol_array) > NaNMath.minimum(Csfc) : false
+    #stable = true ? NaNMath.maximum(sol_array) < NaNMath.maximum(Csfc) && NaNMath.minimum(sol_array) > NaNMath.minimum(Csfc) : false
     println("stable: " *string(stable))
 end
 
+function globalmean_stepresponse(TMIversion,region,γ,L,B,τ)
+
+    # assume evenly spaced (uniform) time spacing
+    Δτ = diff(τ)[1]
+    b = TMI.surfaceregion(TMIversion,region,γ)
+    c₀ = zeros(γ) # preallocate initial condition Field
+    c₀ = B* vec(b)
+    f(du,u,p,t) = mul!(du, L, u) #avoid allocation
+    func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array
+    tspan = (first(τ),last(τ))
+    prob = ODEProblem(func, c₀, tspan) # Field type
+
+    # possible algs:
+    # QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
+    integrator = init(prob,QNDF())
+
+    # better to grab input type somehow, instead of assuming Float64
+    Dmean = Float64[] # [0.0]; # for time 0
+
+    solfld = zeros(γ)
+    for (u,t) in TimeChoiceIterator(integrator,τ)
+        solfld.tracer[wet(solfld)] = u
+        push!(Dmean,mean(solfld))
+    end
+
+    # set first element to zero.
+    Dmean[1] = 0.0
+    return Dmean
+end
+
+#globalmean_impulseresponse(TMIversion,region,γ,L,B,τ) = (diff(globalmean_stepresponse(TMIversion,region,γ,L,B,τ)),(τ[1:end-1]+τ[2:end])./2)
+"""
+    function globalmean_impulseresponse
+
+    Ḡ: satisfied ∫₀^∞ Ḡ(τ) dτ = 1
+
+    `alg`: centered or leapfrog
+
+    Does leapfrog satisfy normalization?
+"""
+globalmean_impulseresponse(TMIversion,region,γ,L,B,τ;alg=:centered) = globalmean_impulseresponse(globalmean_stepresponse(TMIversion,region,γ,L,B,τ),τ,alg=alg)
+function globalmean_impulseresponse(D̄,τ;alg=:centered)
+    if alg == :centered
+        ihi = 2:length(D̄)
+        ilo = 1:(length(D̄)-1)
+    elseif alg == :leapfrog
+        ihi = 3:length(D̄)
+        ilo = 1:(length(D̄)-2)
+    end
+    Δτ = τ[ihi]-τ[ilo]
+    Ḡ = (D̄[ihi] - D̄[ilo])./Δτ
+    τ = (τ[ihi] + τ[ilo])./2
+    return Ḡ,τ
+end
 
 end
