@@ -360,17 +360,20 @@ function vintagedistribution(TMIversion,γ::TMI.Grid,L,B,t₀,tf; tmodern= 2023)
     b = TMI.surfaceregion(TMIversion,"GLOBAL",γ)
     
     #c₀ = zeros(γ) # preallocate initial condition Field
-    c₀ = B* vec(b)
+    c₀ = B * vec(b) #vec(BoundaryCondition) will only get wet points 
     f(du,u,p,t) = mul!(du, L, u) #avoid allocation
     func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array
-    tspan = (0.0,τ₀)
-    prob = ODEProblem(func, c₀, tspan) # Field type
+    τspan = (0.0,τ₀)
+    prob = ODEProblem(func, c₀, τspan) # Field type
 
+    #solve ∂c/∂t = Lc and save it at τf, τ₀
     # possible algs:
     # QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
     u = solve(prob,QNDF(),saveat=(τf,τ₀))
 
     g = zeros(γ)
+    #percentage of water attained between 2015-2020 in the global ocean
+    #just subtract the two timesteps 
     g.tracer[wet(g)] = u[2] - u[1]
 
     return g
@@ -522,7 +525,7 @@ function globalmean_stepresponse(TMIversion,region,γ,L,B,τ)
 
     # possible algs:
     # QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
-    integrator = init(prob,QNDF())
+    integrator = init(prob,QNDF()) #init so it can be
 
     # better to grab input type somehow, instead of assuming Float64
     Dmean = Float64[] # [0.0]; # for time 0

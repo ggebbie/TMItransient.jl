@@ -11,64 +11,6 @@ using Statistics
     
     A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion,compute_lu=false);
 
-    @testset "vintage test" begin
-
-        using Interpolations
-        Δ,τ = read_stepresponse()
-        g = vintagedistribution(2015,2020,Δ,τ)
-
-        @test maximum(g) ≤ 1.0
-        #@test minimum(g) ≥ 0.0 # fails for MATLAB
-
-
-        g2 = vintagedistribution(TMIversion,γ,L,B,2015,2020)
-        @test maximum(g2) ≤ 1.0
-        #@test minimum(g) ≥ 0.0 # fails for Julia
-
-        # compare g, g2 at N random points
-
-        N = 2
-        # get random locations that are wet (ocean)
-        locs = Vector{Tuple{Float64,Float64,Float64}}(undef,N)
-        [locs[i] = wetlocation(γ) for i in eachindex(locs)]
-
-        # get weighted interpolation indices
-        wis= Vector{Tuple{Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}}}(undef,N)
-        [wis[i] = interpindex(locs[i],γ) for i in 1:N]
-
-        y1 = observe(g,wis,γ)
-        y2 = observe(g2,wis,γ)
-
-        # relative difference between MATLAB and Julia computations
-        for tt in 1:N
-            @test 100*abs(y1[tt] - y2[tt])/(y1[tt] + y2[tt]) < 1.0 # percent
-        end
-
-    end
-
-    # @testset "monotonicinterpolation" begin
-    #     using Interpolations
-    #     Δ,τ = read_stepresponse()
-
-    #     d2 = Vector{Vector{Float64}}(undef,2)
-    #     d2 = Vector{Float64}(undef,2)
-    #     t2 = Vector{Float64}(undef,2)
-    #     d2[1] = [1,2]
-    #     d2[2] = [3,4]
-    #     d2[1] = 1
-    #     d2[2] = 3
-    #     t2[1] = 1
-    #     t2[2] = 2
-        
-    #     itp = interpolate(t2, d2, FritschCarlsonMonotonicInterpolation())
-    #     itp = interpolate(τ, Δ)
-    #     itp = interpolate(τ, Δ, FritschCarlsonMonotonicInterpolation())
-    #     itp = interpolate(τ, Δ, SteffenMonotonicInterpolation())
-    #     #itp = interpolate(τ, Δ, FritschButlandInterpolation())
-
-    #     #g = vintagedistribution(1850,2022,Δ,τ)
-    # end
-
     @testset "watermass_stepresponse" begin
         #using Revise, TMI
         using LinearAlgebra
@@ -120,6 +62,66 @@ using Statistics
         end
         
     end
+
+    @testset "vintage test" begin
+
+        using Interpolations
+        Δ,τ = read_stepresponse() #Δ: Vector{Field}, τ: lags 
+        g = vintagedistribution(2015,2020,Δ,τ) #Field: percentage of waters in modern ocean from 2015-2020
+
+        @test maximum(g) ≤ 1.0
+        #@test minimum(g) ≥ 0.0 # fails for MATLAB
+
+
+        g2 = vintagedistribution(TMIversion,γ,L,B,2015,2020) #pure Julia computation
+        @test maximum(g2) ≤ 1.0
+        #@test minimum(g) ≥ 0.0 # fails for Julia
+
+        # compare g, g2 at N random points
+
+        N = 2
+        # get random locations that are wet (ocean)
+        locs = Vector{Tuple{Float64,Float64,Float64}}(undef,N)
+        [locs[i] = wetlocation(γ) for i in eachindex(locs)]
+
+        # get weighted interpolation indices
+        wis= Vector{Tuple{Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}}}(undef,N)
+        [wis[i] = interpindex(locs[i],γ) for i in 1:N]
+
+        y1 = observe(g,wis,γ)
+        y2 = observe(g2,wis,γ)
+
+        # relative difference between MATLAB and Julia computations
+        for tt in 1:N
+            @test 100*abs(y1[tt] - y2[tt])/(y1[tt] + y2[tt]) < 1.0 # percent
+        end
+
+    end
+
+    # @testset "monotonicinterpolation" begin
+    #     using Interpolations
+    #     Δ,τ = read_stepresponse()
+
+    #     d2 = Vector{Vector{Float64}}(undef,2)
+    #     d2 = Vector{Float64}(undef,2)
+    #     t2 = Vector{Float64}(undef,2)
+    #     d2[1] = [1,2]
+    #     d2[2] = [3,4]
+    #     d2[1] = 1
+    #     d2[2] = 3
+    #     t2[1] = 1
+    #     t2[2] = 2
+        
+    #     itp = interpolate(t2, d2, FritschCarlsonMonotonicInterpolation())
+    #     itp = interpolate(τ, Δ)
+    #     itp = interpolate(τ, Δ, FritschCarlsonMonotonicInterpolation())
+    #     itp = interpolate(τ, Δ, SteffenMonotonicInterpolation())
+    #     #itp = interpolate(τ, Δ, FritschButlandInterpolation())
+
+    #     #g = vintagedistribution(1850,2022,Δ,τ)
+    # end
+
+
 
     # @testset "transientsimulation" begin
 
