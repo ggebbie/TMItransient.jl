@@ -20,7 +20,7 @@ TMI = "582500f6-28c8-4d8f-aabe-b197735ec1d4"
 [compat]
 TMI = "0.1"
 OrdinaryDiffEq = "6.33.3"
-julia = "1.9”
+julia = "1.9"
 
 
 [extras]
