@@ -511,13 +511,14 @@ end
 function globalmean_stepresponse(TMIversion,region,γ,L,B,τ)
 
     # assume evenly spaced (uniform) time spacing
-    Δτ = diff(τ)[1]
+    # Δτ = diff(τ)[1]
     b = TMI.surfaceregion(TMIversion,region,γ)
     c₀ = zeros(γ) # preallocate initial condition Field
     c₀ = B* vec(b)
     f(du,u,p,t) = mul!(du, L, u) #avoid allocation
     func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array
-    tspan = (first(τ),last(τ))
+    # make sure it starts at t=0 even if not saved there
+    tspan = (0*first(τ),last(τ))
     prob = ODEProblem(func, c₀, tspan) # Field type
 
     # possible algs:
@@ -533,8 +534,12 @@ function globalmean_stepresponse(TMIversion,region,γ,L,B,τ)
         push!(Dmean,mean(solfld))
     end
 
-    # set first element to zero.
-    Dmean[1] = 0.0
+    # Philosophy: would prefer to not mess with output.
+    #set first element to zero if lag is zero
+    #if iszero(τ[1])
+    #    Dmean[1] = 0.0
+    #end
+    
     return Dmean
 end
 
