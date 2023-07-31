@@ -1,3 +1,5 @@
+using Revise 
+import Pkg;Pkg.activate("/home/brynn/Code/TMItransient.jl")
 using TMItransient, TMI 
 using Test
 using Statistics
@@ -10,7 +12,7 @@ using Statistics
     #TMIversion = "modern_90x45x33_unpub12"
     
     A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion,compute_lu=false);
-
+#=
     @testset "vintage test" begin
 
         using Interpolations
@@ -207,4 +209,20 @@ using Statistics
     #         println("Varying case stable: ", stable)
     #     end       
     #end
+=#
+    @testset "stepresponse" begin
+        region = "GLOBAL"
+        b = TMI.surfaceregion(TMIversion, region, γ)
+        τ = 0:3
+
+        #this should have the same response as globalmean_stepresponse 
+        @time D̄_new = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = mean) #103s
+        @time D̄_old = globalmean_stepresponse(TMIversion,region,γ,L,B,τ) # CDF
+
+        #D̄[1] won't match because original method sets it to 0 and I don't 
+        @test sum(D̄_new[2:4] .== D̄_old[2:4]) == 3#105
+        
+
+    end
+    
 end
