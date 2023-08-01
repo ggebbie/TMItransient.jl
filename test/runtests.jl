@@ -12,7 +12,7 @@ using Statistics
     #TMIversion = "modern_90x45x33_unpub12"
     
     A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion);
-#=
+    
     @testset "vintage test" begin
 
         using Interpolations
@@ -209,30 +209,25 @@ using Statistics
     #         println("Varying case stable: ", stable)
     #     end       
     #end
-=#
+
     @testset "stepresponse" begin
         region = "GLOBAL"
         b = TMI.surfaceregion(TMIversion, region, γ)
         τ = 0:3
 
-        #this should have the same response as globalmean_stepresponse 
+        #this should have the same result as globalmean_stepresponse 
         @time D̄_new = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = mean) #103s
         @time D̄_old = globalmean_stepresponse(TMIversion,region,γ,L,B,τ) # CDF
 
         #D̄[1] won't match because original method sets it to 0 and I don't 
         @test sum(D̄_new[2:4] .== D̄_old[2:4]) == 3#105
-        
+
+        #get output in Field type 
         @time D̄_new_allout = stepresponse(TMIversion, b, γ, L, B, τ) #103s
 
-        funk(x, a, b) = mean(x)
-        #just test handing it mulitple inputs to funk 
-        @time D̄_multiple_input = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = funk, args = [1, 2]) #103s
-
-        N = 10
         #use synthetic observations to grab some random wet points to observe 
+        N = 10
         _, _, _, _, locs, wis = synthetic_observations(TMIversion,"PO₄",γ,N,0.1)
-
-        #now test with method 
         D̄_observed = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = observe, args = (wis, γ)) 
 
         #I'm pretty sure globalmean_impulseresponse is generic enough to work with any of my D̄
@@ -244,7 +239,7 @@ using Statistics
                 println("impulseresponse doesn't work for D̄ number: " * string(i))
             end   
         end
-
+        
         #test: is the integral of ĝ equivalent to the output of the `meanage` function? (eqtn 2 of GH 2012) 
         τ = 0:10000 
         @time D̄_long = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = observe, args = (wis, γ)) #90 seconds for 100, 98 seconds for 2000, 106 for 10k 
@@ -253,29 +248,6 @@ using Statistics
         ḡ = hcat(Ḡ_long...)
         #d̄ = hcat(D̄_long...)
         @test isapprox([cumsum(ḡ[i, :] .* τ)[end] for i in 1:10], meanage_obs, atol = 10)
-        
-        #=
-        using PyPlot
-        figure()
-        subplot(1,2,1)
-        [plot(d̄[i, :], label = i) for i in 1:10]
-        title("D̄")
-        legend()
-        xlabel("time [yrs]")
-        ylabel("C")
-        
-        subplot(1,2,2)
-        [plot(τ, ḡ[i, :], label = i) for i in 1:10]
-        title("Ḡ")
-        legend()
-        xlabel("time [yrs]")
-        ylabel("dC/dt")
-
-        tight_layout()
-        =#
-        
-
-
     end
     
 end
