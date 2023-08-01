@@ -1,5 +1,3 @@
-using Revise 
-import Pkg;Pkg.activate("/home/brynn/Code/TMItransient.jl")
 using TMItransient, TMI 
 using Test
 using Statistics
