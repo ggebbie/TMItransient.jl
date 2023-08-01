@@ -11,7 +11,7 @@ using Statistics
     #TMIversion = "modern_180x90x33_GH10_GH12"
     #TMIversion = "modern_90x45x33_unpub12"
     
-    A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion,compute_lu=false);
+    A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion);
 #=
     @testset "vintage test" begin
 
@@ -222,6 +222,41 @@ using Statistics
         #D̄[1] won't match because original method sets it to 0 and I don't 
         @test sum(D̄_new[2:4] .== D̄_old[2:4]) == 3#105
         
+        @time D̄_new_allout = stepresponse(TMIversion, b, γ, L, B, τ) #103s
+
+        funk(x, a, b) = mean(x)
+        #just test handing it mulitple inputs to funk 
+        @time D̄_multiple_input = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = funk, args = [1, 2]) #103s
+
+        N = 10
+        #use synthetic observations to grab some random wet points to observe 
+        _, _, _, _, locs, wis = synthetic_observations(TMIversion,"PO₄",γ,N,0.1)
+
+        #now test with method 
+        D̄_observed = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = observe, args = (wis, γ)) 
+
+        #I'm pretty sure globalmean_impulseresponse is generic enough to work with any of my D̄
+        #turns out it works for all of them besides the one that is Field type (number 3). We'd have to define division in order for that to work. Also looks like there's an issue with subtraction? 
+        for (i, d) in enumerate([D̄_new, D̄_old, D̄_new_allout, D̄_multiple_input, D̄_observed])
+            try
+                globalmean_impulseresponse(d, τ, alg = :centered)
+            catch
+                println("impulseresponse doesn't work for D̄ number: " * string(i))
+            end   
+        end
+
+
+        τ = 0:100
+        @time D̄_long = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = observe, args = (wis, γ)) #90 seconds 
+        
+        meanage_obs = observe(meanage(TMIversion, Alu, γ), wis, γ)
+        vals = hcat(D̄_long...)
+
+        using PyPlot
+        figure()
+        plot(vals[1, :])
+
+
 
     end
     

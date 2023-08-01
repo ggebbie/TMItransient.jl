@@ -416,8 +416,7 @@ function stepresponse(loc)
         Δloc[tt] = observe(Δ[tt],wis,Δ[tt].γ)[1] # kludge to convert to scalar
     end
     
-    return Δloc,τ
-    
+    return Δloc,τ    
 end
 
 """
@@ -523,13 +522,12 @@ end
     - τ: evenly spaced vector
     - f: some function f(u) where u is a vector of all wet points 
 """
-function stepresponse(TMIversion, b, γ, L, B, τ; eval_func = return_self)
-    
+function stepresponse(TMIversion, b, γ, L, B, τ; eval_func = return_self, args = [])
     # assume evenly spaced (uniform) time spacing
     Δτ = diff(τ)[1]
     #b = TMI.surfaceregion(TMIversion,region,γ)
     c₀ = zeros(γ) # preallocate initial condition Field
-    c₀ = B* vec(b)
+    c₀ = B * vec(b)
     f(du,u,p,t) = mul!(du, L, u) #avoid allocation
     func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array
     tspan = (first(τ), last(τ))
@@ -540,14 +538,15 @@ function stepresponse(TMIversion, b, γ, L, B, τ; eval_func = return_self)
     integrator = init(prob,QNDF())
     
     #assumes `f` returns one output!
-    output = Vector{first(Base.return_types(eval_func, (Vector{Float64},)))}(undef, length(τ))
+    #how should I handle the fact that there can be no args
+    output = isempty(args) ? Vector{first(Base.return_types(eval_func, (Field{Float64},)))}(undef, length(τ)) : Vector{first(Base.return_types(eval_func, (Field{Float64}, typeof.(args)...,)))}(undef, length(τ))
     
-    solfld = zeros(γ) #initialize solution field
+    solfld = zeros(γ) #initialize solution Field 
     
     for (u, t) in TimeChoiceIterator(integrator, τ)
         solfld.tracer[wet(solfld)] = u
         idx = first(findall(x->x==t, τ)) #is this worse than a push?
-        output[idx] = eval_func(solfld)
+        output[idx] = isempty(args) ? eval_func(solfld) : eval_func(solfld, args...)
     end
     return output
         
