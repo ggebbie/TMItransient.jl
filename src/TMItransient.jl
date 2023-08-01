@@ -543,9 +543,8 @@ function stepresponse(TMIversion, b, γ, L, B, τ; eval_func = return_self, args
     
     solfld = zeros(γ) #initialize solution Field 
     
-    for (u, t) in TimeChoiceIterator(integrator, τ)
+    for (idx, (u, t)) in enumerate(TimeChoiceIterator(integrator, τ))
         solfld.tracer[wet(solfld)] = u
-        idx = first(findall(x->x==t, τ)) #is this worse than a push?
         output[idx] = isempty(args) ? eval_func(solfld) : eval_func(solfld, args...)
     end
     return output
