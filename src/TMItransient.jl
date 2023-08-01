@@ -580,7 +580,6 @@ function globalmean_stepresponse(TMIversion,region,γ,L,B,τ)
 
     solfld = zeros(γ)
     for (u,t) in TimeChoiceIterator(integrator,τ)
-        @show t 
         solfld.tracer[wet(solfld)] = u
         push!(Dmean,mean(solfld))
     end

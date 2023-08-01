@@ -245,17 +245,35 @@ using Statistics
             end   
         end
 
-
-        τ = 0:100
-        @time D̄_long = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = observe, args = (wis, γ)) #90 seconds 
-        
+        #test: is the integral of ĝ equivalent to the output of the `meanage` function? (eqtn 2 of GH 2012) 
+        τ = 0:10000 
+        @time D̄_long = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = observe, args = (wis, γ)) #90 seconds for 100, 98 seconds for 2000, 106 for 10k 
+        Ḡ_long, τ = globalmean_impulseresponse(D̄_long, τ)
         meanage_obs = observe(meanage(TMIversion, Alu, γ), wis, γ)
-        vals = hcat(D̄_long...)
-
+        ḡ = hcat(Ḡ_long...)
+        #d̄ = hcat(D̄_long...)
+        @test isapprox([cumsum(ḡ[i, :] .* τ)[end] for i in 1:10], meanage_obs, atol = 10)
+        
+        #=
         using PyPlot
         figure()
-        plot(vals[1, :])
+        subplot(1,2,1)
+        [plot(d̄[i, :], label = i) for i in 1:10]
+        title("D̄")
+        legend()
+        xlabel("time [yrs]")
+        ylabel("C")
+        
+        subplot(1,2,2)
+        [plot(τ, ḡ[i, :], label = i) for i in 1:10]
+        title("Ḡ")
+        legend()
+        xlabel("time [yrs]")
+        ylabel("dC/dt")
 
+        tight_layout()
+        =#
+        
 
 
     end
