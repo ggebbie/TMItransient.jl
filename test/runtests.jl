@@ -230,7 +230,7 @@ using Statistics
 
         #I'm pretty sure globalmean_impulseresponse is generic enough to work with any of my D̄
         #turns out it works for all of them besides the one that is Field type (number 3). We'd have to define division in order for that to work. Also looks like there's an issue with subtraction? 
-        for (i, d) in enumerate([D̄_new, D̄_old, D̄_new_allout, D̄_multiple_input, D̄_observed])
+        for (i, d) in enumerate([D̄_new, D̄_old, D̄_new_allout, D̄_observed])
             try
                 globalmean_impulseresponse(d, τ, alg = :centered)
             catch
