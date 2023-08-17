@@ -30,13 +30,6 @@ using Statistics
         @test maximum(g2) ≤ 1.0
         #@test minimum(g) ≥ 0.0 # fails for Julia
 
-
-        # # get weighted interpolation indices
-        # wis= Vector{Tuple{Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}}}(undef,N)
-        # [wis[i] = interpindex(locs[i],γ) for i in 1:N]
-        # y1 = observe(g,wis,γ)
-        # y2 = observe(g2,wis,γ)
-
         y1 = observe(g,locs,γ)
         y2 = observe(g2,locs,γ)
 
@@ -106,9 +99,9 @@ using Statistics
         @time D̄_new_allout = stepresponse(TMIversion, b, γ, L, B, τ) #103s
 
         #use synthetic observations to grab some random wet points to observe 
-        N = 10
-        _, _, _, _, locs, wis = synthetic_observations(TMIversion,"PO₄",γ,N,0.1)
-        D̄_observed = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = observe, args = (wis, γ)) 
+        #N = 10
+        #locs = [wetlocation(γ) for i in 1:N]
+        D̄_observed = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = observe, args = (locs, γ)) 
 
         #I'm pretty sure globalmean_impulseresponse is generic enough to work with any of my D̄
         #turns out it works for all of them besides the one that is Field type (number 3). We'd have to define division in order for that to work. Also looks like there's an issue with subtraction? 
@@ -126,8 +119,9 @@ using Statistics
         τ = 0:4000 
         @time D̄_long = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = observe, args = (locs, γ)) # 90 seconds for 100, 98 seconds for 2000, 106 for 10k 
         Ḡ_long, τ = globalmean_impulseresponse(D̄_long, τ)
+        # uses locs from top-level scope
         ā_obs = observe(meanage(TMIversion, Alu, γ), locs, γ)
-        println("Mean age at sites ",meanage_obs)
+        println("Mean age at sites ",ā_obs)
         ḡ = hcat(Ḡ_long...)
         #d̄ = hcat(D̄_long...)
 
