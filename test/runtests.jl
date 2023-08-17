@@ -9,8 +9,13 @@ using Statistics
     #TMIversion = "modern_180x90x33_GH10_GH12"
     #TMIversion = "modern_90x45x33_unpub12"
     
-    A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion,compute_lu=false);
+    A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion);
 
+    # compare g, g2 at N random points
+    N = 2
+    # get random locations that are wet (ocean)
+    locs = [wetlocation(γ) for i in 1:N]
+    
     @testset "vintage test" begin
 
         using Interpolations
@@ -25,19 +30,8 @@ using Statistics
         @test maximum(g2) ≤ 1.0
         #@test minimum(g) ≥ 0.0 # fails for Julia
 
-        # compare g, g2 at N random points
-
-        N = 2
-        # get random locations that are wet (ocean)
-        locs = Vector{Tuple{Float64,Float64,Float64}}(undef,N)
-        [locs[i] = wetlocation(γ) for i in eachindex(locs)]
-
-        # get weighted interpolation indices
-        wis= Vector{Tuple{Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}}}(undef,N)
-        [wis[i] = interpindex(locs[i],γ) for i in 1:N]
-
-        y1 = observe(g,wis,γ)
-        y2 = observe(g2,wis,γ)
+        y1 = observe(g,locs,γ)
+        y2 = observe(g2,locs,γ)
 
         # relative difference between MATLAB and Julia computations
         for tt in 1:N
@@ -46,7 +40,103 @@ using Statistics
 
     end
 
-    # @testset "monotonicinterpolation" begin
+    @testset "watermass_stepresponse" begin
+        using LinearAlgebra
+
+        # read a water-mass surface patch from these choices
+        list = ("GLOBAL","ANT","SUBANT",
+                "NATL","NPAC","TROP","ARC",
+                "MED","ROSS","WED","LAB","GIN",
+                "ADEL","SUBANTATL","SUBANTPAC","SUBANTIND",
+                "TROPATL","TROPPAC","TROPIND")
+
+        # choose water mass (i.e., surface patch) of interest
+        region = list[1]
+        #tspan = (0.0, 5.0)
+        τ = 0:3
+        # replace with function call
+        # add alg=QNDF() as optional argument
+
+        @time D̄ = globalmean_stepresponse(TMIversion,region,γ,L,B,τ) # CDF
+
+        # should monotonically increase
+        @test sum(diff(D̄) .≥ 0) == length(D̄) - 1
+
+        Ḡ,tḠ = globalmean_impulseresponse(TMIversion,region,γ,L,B,τ,alg=:centered)
+        
+        # Ḡ should be non-negative
+        @test sum(Ḡ .≥ 0) == length(Ḡ)
+
+        # Ḡ should add to something less than unity
+        @test sum(Ḡ) ≤ 1.0
+
+        # compare to reading same thing from MATLAB output.
+        Δ,τmat = read_stepresponse()
+
+        # relative difference between MATLAB and Julia computations
+        for tt in 2:3
+            ϵ = 100*abs(mean(Δ[tt]) - D̄[tt])./(mean(Δ[tt]) + D̄[tt])
+            println("percent difference is ",ϵ)
+            @test ϵ < 1.0 # percent
+        end
+        
+    end
+
+    region = "GLOBAL"
+    b = TMI.surfaceregion(TMIversion, region, γ)
+
+    @testset "stepresponse" begin
+        τ = 0:2
+
+        #this should have the same result as globalmean_stepresponse 
+        @time D̄_new = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = mean) #103s
+        @time D̄_old = globalmean_stepresponse(TMIversion,region,γ,L,B,τ) # CDF
+
+        #D̄[1] won't match because original method sets it to 0 and I don't 
+        @test sum(D̄_new[2:3] .== D̄_old[2:3]) == 2 # 105
+
+        #get output in Field type 
+        @time D̄_new_allout = stepresponse(TMIversion, b, γ, L, B, τ) #103s
+
+        #use synthetic observations to grab some random wet points to observe 
+        #N = 10
+        #locs = [wetlocation(γ) for i in 1:N]
+        D̄_observed = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = observe, args = (locs, γ)) 
+
+        #I'm pretty sure globalmean_impulseresponse is generic enough to work with any of my D̄
+        #turns out it works for all of them besides the one that is Field type (number 3). We'd have to define division in order for that to work. Also looks like there's an issue with subtraction? 
+        for (i, d) in enumerate([D̄_new, D̄_old, D̄_new_allout, D̄_observed])
+            try
+                globalmean_impulseresponse(d, τ, alg = :centered)
+            catch
+                println("impulseresponse doesn't work for D̄ number: " * string(i))
+            end   
+        end
+    end
+
+    @testset "mean age" begin
+        #test: is the integral of ĝ equivalent to the output of the `meanage` function? (eqtn 2 of GH 2012) 
+        τ = 0:4000 
+        @time D̄_long = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = observe, args = (locs, γ)) # 90 seconds for 100, 98 seconds for 2000, 106 for 10k 
+        Ḡ_long, τ = globalmean_impulseresponse(D̄_long, τ)
+        # uses locs from top-level scope
+        ā_obs = observe(meanage(TMIversion, Alu, γ), locs, γ)
+        println("Mean age at sites ",ā_obs)
+        ḡ = hcat(Ḡ_long...)
+        #d̄ = hcat(D̄_long...)
+
+        ā = [cumsum(ḡ[i, :] .* τ)[end] for i in 1:2]
+        #@test isapprox([cumsum(ḡ[i, :] .* τ)[end] for i in 1:10], meanage_obs, atol = 50)
+
+        atol = 10
+        denom = abs.(ā + ā_obs)./2
+        replace!(x -> x< atol ? atol : x, denom)
+        relative_error = 100*abs.(ā - ā_obs)./denom
+        @test all(relative_error .< 10) # relative error less than 10 percent?
+
+    end
+
+        # @testset "monotonicinterpolation" begin
     #     using Interpolations
     #     Δ,τ = read_stepresponse()
 
@@ -69,59 +159,7 @@ using Statistics
     #     #g = vintagedistribution(1850,2022,Δ,τ)
     # end
 
-    @testset "watermass_stepresponse" begin
-        #using Revise, TMI
-        using LinearAlgebra
-        #using OrdinaryDiffEq
-        #using Interpolations
-        #using PyPlot
-        #using NaNMath
-        #using PythonPlot
-
-        #TMIversion = "modern_90x45x33_GH10_GH12"
-        #A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion);
-
-        # read a water-mass surface patch from these choices
-        list = ("GLOBAL","ANT","SUBANT",
-                "NATL","NPAC","TROP","ARC",
-                "MED","ROSS","WED","LAB","GIN",
-                "ADEL","SUBANTATL","SUBANTPAC","SUBANTIND",
-                "TROPATL","TROPPAC","TROPIND")
-
-        # choose water mass (i.e., surface patch) of interest
-        region = list[1]
-        #tspan = (0.0, 5.0)
-        τ = 0:3
-        # replace with function call
-        # add alg=QNDF() as optional argument
-
-        @time D̄ = globalmean_stepresponse(TMIversion,region,γ,L,B,τ) # CDF
-
-        # should monotonically increase
-        @test sum(diff(D̄) .≥ 0) == length(D̄) - 1
-
-        Ḡ,tḠ = globalmean_impulseresponse(TMIversion,region,γ,L,B,τ,alg=:centered)
-        #Ḡ2,tḠ2 = globalmean_impulseresponse(TMIversion,region,γ,L,B,τ,alg=:leapfrog)
-        #Ḡ3,tḠ3 = globalmean_impulseresponse(D̄,τ,alg=:leapfrog)
-        #jldsave("Gbar_TMI_90x45x33_GH10_GH12.jld2";Ḡ,tḠ)
-        
-        # Ḡ should be non-negative
-        @test sum(Ḡ .≥ 0) == length(Ḡ)
-
-        # Ḡ should add to something less than unity
-        @test sum(Ḡ) ≤ 1.0
-
-        # compare to reading same thing from MATLAB output.
-        Δ,τmat = read_stepresponse()
-
-        # relative difference between MATLAB and Julia computations
-        for tt in 2:3
-            @test 100*abs(mean(Δ[tt]) - D̄[tt])./(mean(Δ[tt]) + D̄[tt]) < 1.0 # percent
-        end
-        
-    end
-
-    # @testset "transientsimulation" begin
+        # @testset "transientsimulation" begin
 
     #     using Interpolations, NaNMath, DifferentialEquations, LinearAlgebra, PreallocationTools, Sundials
 
@@ -207,4 +245,5 @@ using Statistics
     #         println("Varying case stable: ", stable)
     #     end       
     #end
+
 end

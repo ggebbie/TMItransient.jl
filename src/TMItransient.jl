@@ -16,7 +16,7 @@ export readopt, ces_ncwrite, varying!,
     deltaresponse, taudeltaresponse, agedistribution,
     EvolvingField,
     globalmean_stepresponse,
-    globalmean_impulseresponse
+    globalmean_impulseresponse, stepresponse
 
 """
     struct EvolvingField
@@ -416,8 +416,7 @@ function stepresponse(loc)
         Δloc[tt] = observe(Δ[tt],wis,Δ[tt].γ)[1] # kludge to convert to scalar
     end
     
-    return Δloc,τ
-    
+    return Δloc,τ    
 end
 
 """
@@ -508,6 +507,57 @@ function stability_check(sol_array, Csfc)
     println("stable: " *string(stable))
 end
 
+"""
+    function stepresponse
+
+    calculate the response to "turning on" some region
+    can compute some statistics on output by providing a function to f 
+
+    # Arguments
+    - TMIversion
+    - b: BoundaryCondition
+    - γ
+    - L
+    - B
+    - τ: evenly spaced vector
+    - f: some function f(u) where u is a vector of all wet points 
+"""
+function stepresponse(TMIversion, b, γ, L, B, τ; eval_func = return_self, args = [])
+    # assume evenly spaced (uniform) time spacing
+    Δτ = diff(τ)[1]
+    #b = TMI.surfaceregion(TMIversion,region,γ)
+    c₀ = zeros(γ) # preallocate initial condition Field
+    c₀ = B * vec(b)
+    f(du,u,p,t) = mul!(du, L, u) #avoid allocation
+    func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array
+    tspan = (first(τ), last(τ))
+    prob = ODEProblem(func, c₀, tspan) #Field type
+
+    # possible algs:
+    # QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
+    integrator = init(prob,QNDF())
+    
+    #assumes `f` returns one output!
+    #how should I handle the fact that there can be no args
+    output = isempty(args) ? Vector{first(Base.return_types(eval_func, (Field{Float64},)))}(undef, length(τ)) : Vector{first(Base.return_types(eval_func, (Field{Float64}, typeof.(args)...,)))}(undef, length(τ))
+    
+    solfld = zeros(γ) #initialize solution Field 
+    
+    for (idx, (u, t)) in enumerate(TimeChoiceIterator(integrator, τ))
+        solfld.tracer[wet(solfld)] = u
+        output[idx] = isempty(args) ? eval_func(solfld) : eval_func(solfld, args...)
+    end
+    return output
+        
+end
+
+return_self(x) = x 
+
+"""
+function globalmean_stepresponse
+
+    calculate the global mean response to "turning on" some region
+"""
 function globalmean_stepresponse(TMIversion,region,γ,L,B,τ)
 
     # assume evenly spaced (uniform) time spacing
@@ -554,6 +604,13 @@ end
     Does leapfrog satisfy normalization?
 """
 globalmean_impulseresponse(TMIversion,region,γ,L,B,τ;alg=:centered) = globalmean_impulseresponse(globalmean_stepresponse(TMIversion,region,γ,L,B,τ),τ,alg=alg)
+
+"""
+    function globalmean_impulseresponse
+
+    based on a globalmean_stepresponse D̄, compute the impulse response
+    can be done via centered or leapfrog difference 
+"""
 function globalmean_impulseresponse(D̄,τ;alg=:centered)
     if alg == :centered
         ihi = 2:length(D̄)
