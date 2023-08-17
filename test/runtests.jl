@@ -10,6 +10,11 @@ using Statistics
     #TMIversion = "modern_90x45x33_unpub12"
     
     A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion);
+
+    # compare g, g2 at N random points
+    N = 2
+    # get random locations that are wet (ocean)
+    locs = [wetlocation(γ) for i in 1:N]
     
     @testset "vintage test" begin
 
@@ -25,11 +30,6 @@ using Statistics
         @test maximum(g2) ≤ 1.0
         #@test minimum(g) ≥ 0.0 # fails for Julia
 
-        # compare g, g2 at N random points
-        N = 2
-        # get random locations that are wet (ocean)
-        locs = Vector{Tuple{Float64,Float64,Float64}}(undef,N)
-        [locs[i] = wetlocation(γ) for i in eachindex(locs)]
 
         # # get weighted interpolation indices
         # wis= Vector{Tuple{Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}, Interpolations.WeightedAdjIndex{2, Float64}}}(undef,N)
