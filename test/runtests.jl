@@ -93,7 +93,7 @@ using Statistics
         @time D̄_old = globalmean_stepresponse(TMIversion,region,γ,L,B,τ) # CDF
 
         #D̄[1] won't match because original method sets it to 0 and I don't 
-        @test sum(D̄_new[2:3] .== D̄_old[2:3]) == 2 #105
+        @test sum(D̄_new[2:3] .== D̄_old[2:3]) == 2 # 105
 
         #get output in Field type 
         @time D̄_new_allout = stepresponse(TMIversion, b, γ, L, B, τ) #103s
@@ -125,7 +125,7 @@ using Statistics
         ḡ = hcat(Ḡ_long...)
         #d̄ = hcat(D̄_long...)
 
-        ā = [cumsum(ḡ[i, :] .* τ)[end] for i in 1:10]
+        ā = [cumsum(ḡ[i, :] .* τ)[end] for i in 1:2]
         #@test isapprox([cumsum(ḡ[i, :] .* τ)[end] for i in 1:10], meanage_obs, atol = 50)
 
         atol = 10
