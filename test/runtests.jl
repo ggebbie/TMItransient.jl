@@ -83,7 +83,7 @@ using Statistics
     end
 
     region = "GLOBAL"
-    b = TMI.surfaceregion(TMIversion, region, γ)
+    b = TMI.surfaceregion(TMIversion, region)
 
     @testset "stepresponse" begin
         τ = 0:2

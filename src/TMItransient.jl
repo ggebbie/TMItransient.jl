@@ -357,7 +357,7 @@ function vintagedistribution(TMIversion,γ::TMI.Grid,L,B,t₀,tf; tmodern= 2023)
     #  Δτ = diff(τ)[1]
 
     # vintages defined relative to GLOBAL surface
-    b = TMI.surfaceregion(TMIversion,"GLOBAL",γ)
+    b = TMI.surfaceregion(TMIversion,"GLOBAL")
     
     #c₀ = zeros(γ) # preallocate initial condition Field
     c₀ = B* vec(b)
@@ -562,7 +562,7 @@ function globalmean_stepresponse(TMIversion,region,γ,L,B,τ)
 
     # assume evenly spaced (uniform) time spacing
     # Δτ = diff(τ)[1]
-    b = TMI.surfaceregion(TMIversion,region,γ)
+    b = TMI.surfaceregion(TMIversion,region)
     c₀ = zeros(γ) # preallocate initial condition Field
     c₀ = B* vec(b)
     f(du,u,p,t) = mul!(du, L, u) #avoid allocation
