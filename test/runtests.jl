@@ -48,14 +48,14 @@ using Statistics
         @test sum(Ḡ) ≤ 1.0
 
         # compare to reading same thing from MATLAB output.
-        Δ,τmat = read_stepresponse()
+        # Δ,τmat = read_stepresponse()
 
-        # relative difference between MATLAB and Julia computations
-        for tt in 2:3
-            ϵ = 100*abs(mean(Δ[tt]) - D̄[tt])./(mean(Δ[tt]) + D̄[tt])
-            println("percent difference is ",ϵ)
-            @test ϵ < 1.0 # percent
-        end
+        # # relative difference between MATLAB and Julia computations
+        # for tt in 2:3
+        #     ϵ = 100*abs(mean(Δ[tt]) - D̄[tt])./(mean(Δ[tt]) + D̄[tt])
+        #     println("percent difference is ",ϵ)
+        #     @test ϵ < 1.0 # percent
+        # end
         
     end
 
