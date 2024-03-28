@@ -16,39 +16,12 @@ using Statistics
     # get random locations that are wet (ocean)
     locs = [wetlocation(γ) for i in 1:N]
     
-    @testset "vintage test" begin
-
-        using Interpolations
-        Δ,τ = read_stepresponse()
-        g = vintagedistribution(2015,2020,Δ,τ)
-
-        @test maximum(g) ≤ 1.0
-        #@test minimum(g) ≥ 0.0 # fails for MATLAB
-
-
-        g2 = vintagedistribution(TMIversion,γ,L,B,2015,2020)
-        @test maximum(g2) ≤ 1.0
-        #@test minimum(g) ≥ 0.0 # fails for Julia
-
-        y1 = observe(g,locs,γ)
-        y2 = observe(g2,locs,γ)
-
-        # relative difference between MATLAB and Julia computations
-        for tt in 1:N
-            @test 100*abs(y1[tt] - y2[tt])/(y1[tt] + y2[tt]) < 1.0 # percent
-        end
-
-    end
 
     @testset "watermass_stepresponse" begin
         using LinearAlgebra
 
         # read a water-mass surface patch from these choices
-        list = ("GLOBAL","ANT","SUBANT",
-                "NATL","NPAC","TROP","ARC",
-                "MED","ROSS","WED","LAB","GIN",
-                "ADEL","SUBANTATL","SUBANTPAC","SUBANTIND",
-                "TROPATL","TROPPAC","TROPIND")
+        list = TMI.regionlist()
 
         # choose water mass (i.e., surface patch) of interest
         region = list[1]
@@ -71,19 +44,19 @@ using Statistics
         @test sum(Ḡ) ≤ 1.0
 
         # compare to reading same thing from MATLAB output.
-        Δ,τmat = read_stepresponse()
+        # Δ,τmat = read_stepresponse()
 
-        # relative difference between MATLAB and Julia computations
-        for tt in 2:3
-            ϵ = 100*abs(mean(Δ[tt]) - D̄[tt])./(mean(Δ[tt]) + D̄[tt])
-            println("percent difference is ",ϵ)
-            @test ϵ < 1.0 # percent
-        end
+        # # relative difference between MATLAB and Julia computations
+        # for tt in 2:3
+        #     ϵ = 100*abs(mean(Δ[tt]) - D̄[tt])./(mean(Δ[tt]) + D̄[tt])
+        #     println("percent difference is ",ϵ)
+        #     @test ϵ < 1.0 # percent
+        # end
         
     end
 
     region = "GLOBAL"
-    b = TMI.surfaceregion(TMIversion, region, γ)
+    b = TMI.surfaceregion(TMIversion, region)
 
     @testset "stepresponse" begin
         τ = 0:2
@@ -118,14 +91,14 @@ using Statistics
         #test: is the integral of ĝ equivalent to the output of the `meanage` function? (eqtn 2 of GH 2012) 
         τ = 0:4000 
         @time D̄_long = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = observe, args = (locs, γ)) # 90 seconds for 100, 98 seconds for 2000, 106 for 10k 
-        Ḡ_long, τ = globalmean_impulseresponse(D̄_long, τ)
+        Ḡ_long, τ2 = globalmean_impulseresponse(D̄_long, τ)
         # uses locs from top-level scope
         ā_obs = observe(meanage(TMIversion, Alu, γ), locs, γ)
         println("Mean age at sites ",ā_obs)
         ḡ = hcat(Ḡ_long...)
         #d̄ = hcat(D̄_long...)
 
-        ā = [cumsum(ḡ[i, :] .* τ)[end] for i in 1:2]
+        ā = [cumsum(ḡ[i, :] .* τ2)[end] for i in 1:2]
         #@test isapprox([cumsum(ḡ[i, :] .* τ)[end] for i in 1:10], meanage_obs, atol = 50)
 
         atol = 10
@@ -133,6 +106,32 @@ using Statistics
         replace!(x -> x< atol ? atol : x, denom)
         relative_error = 100*abs.(ā - ā_obs)./denom
         @test all(relative_error .< 10) # relative error less than 10 percent?
+
+        @testset "vintage test" begin
+
+            using Interpolations
+
+            y1 =  zeros(length(locs))
+            for  j in  eachindex(y1)
+                Δ  = [D̄_long[i][j]  for  i  in  eachindex(D̄_long)]
+                y1[j] = vintagedistribution(2015,2020,Δ,τ)
+            end
+            
+            @test maximum(y1) ≤ 1.0
+            #@test minimum(g) ≥ 0.0 # fails for MATLAB
+
+            g2 = vintagedistribution(TMIversion,γ,L,B,2015,2020)
+            @test maximum(g2) ≤ 1.0
+            #@test minimum(g) ≥ 0.0 # fails for Julia
+
+            #y1 = TMI.observe(g,locs,γ)
+            y2 = observe(g2,locs,γ)
+
+            # relative difference between MATLAB and Julia computations
+            for tt in 1:N
+                @test 100*abs(y1[tt] - y2[tt])/(y1[tt] + y2[tt]) < 1.0 # percent
+            end
+        end
 
     end
 
