@@ -16,29 +16,6 @@ using Statistics
     # get random locations that are wet (ocean)
     locs = [wetlocation(γ) for i in 1:N]
     
-    @testset "vintage test" begin
-
-        using Interpolations
-        Δ,τ = read_stepresponse()
-        g = vintagedistribution(2015,2020,Δ,τ)
-
-        @test maximum(g) ≤ 1.0
-        #@test minimum(g) ≥ 0.0 # fails for MATLAB
-
-
-        g2 = vintagedistribution(TMIversion,γ,L,B,2015,2020)
-        @test maximum(g2) ≤ 1.0
-        #@test minimum(g) ≥ 0.0 # fails for Julia
-
-        y1 = observe(g,locs,γ)
-        y2 = observe(g2,locs,γ)
-
-        # relative difference between MATLAB and Julia computations
-        for tt in 1:N
-            @test 100*abs(y1[tt] - y2[tt])/(y1[tt] + y2[tt]) < 1.0 # percent
-        end
-
-    end
 
     @testset "watermass_stepresponse" begin
         using LinearAlgebra
@@ -71,19 +48,19 @@ using Statistics
         @test sum(Ḡ) ≤ 1.0
 
         # compare to reading same thing from MATLAB output.
-        Δ,τmat = read_stepresponse()
+        # Δ,τmat = read_stepresponse()
 
-        # relative difference between MATLAB and Julia computations
-        for tt in 2:3
-            ϵ = 100*abs(mean(Δ[tt]) - D̄[tt])./(mean(Δ[tt]) + D̄[tt])
-            println("percent difference is ",ϵ)
-            @test ϵ < 1.0 # percent
-        end
+        # # relative difference between MATLAB and Julia computations
+        # for tt in 2:3
+        #     ϵ = 100*abs(mean(Δ[tt]) - D̄[tt])./(mean(Δ[tt]) + D̄[tt])
+        #     println("percent difference is ",ϵ)
+        #     @test ϵ < 1.0 # percent
+        # end
         
     end
 
     region = "GLOBAL"
-    b = TMI.surfaceregion(TMIversion, region, γ)
+    b = TMI.surfaceregion(TMIversion, region)
 
     @testset "stepresponse" begin
         τ = 0:2
@@ -133,6 +110,29 @@ using Statistics
         replace!(x -> x< atol ? atol : x, denom)
         relative_error = 100*abs.(ā - ā_obs)./denom
         @test all(relative_error .< 10) # relative error less than 10 percent?
+
+        @testset "vintage test" begin
+
+            using Interpolations
+            #Δ,τ = read_stepresponse()  #  mat file not reachable from GDrive
+            g = vintagedistribution(2015,2020,D̄_long,τ)
+
+            @test maximum(g) ≤ 1.0
+            #@test minimum(g) ≥ 0.0 # fails for MATLAB
+
+            g2 = vintagedistribution(TMIversion,γ,L,B,2015,2020)
+            @test maximum(g2) ≤ 1.0
+            #@test minimum(g) ≥ 0.0 # fails for Julia
+
+            y1 = observe(g,locs,γ)
+            y2 = observe(g2,locs,γ)
+
+            # relative difference between MATLAB and Julia computations
+            for tt in 1:N
+                @test 100*abs(y1[tt] - y2[tt])/(y1[tt] + y2[tt]) < 1.0 # percent
+            end
+
+        end
 
     end
 
