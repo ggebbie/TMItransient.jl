@@ -137,7 +137,8 @@ function setupODE(γ, u0,tsfc,dsfc,bc,L,B,t_int)
 
     #more parameters for diffeq solver 
     τ = 1 / 12 #monthly restoring timescale
-    li = LinearInterpolation(tsfc, 1:length(tsfc))
+    #li = LinearInterpolation(tsfc, 1:length(tsfc))
+    li = linear_interpolation(tsfc, 1:length(tsfc))
 
     #Instantiate arrays that the diffeq solver will reallocate
     LC = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl
@@ -167,7 +168,7 @@ function setupODE_nojac(γ, u0,tsfc,dsfc,bc,L,B,t_int)
 
     #more parameters for diffeq solver 
     τ = 1 / 12 #monthly restoring timescale
-    li = LinearInterpolation(tsfc, 1:length(tsfc))
+    li = linear_interpolation(tsfc, 1:length(tsfc))
 
     #Instantiate arrays that the diffeq solver will reallocate
     LC = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl
@@ -332,7 +333,7 @@ function vintagedistribution(t₀,tf,Δ,τ;tmodern=2023,interp="linear")
 
     # get interpolation object
     if interp == "linear"
-        itp = LinearInterpolation(τ, Δ)
+        itp = linear_interpolation(τ, Δ)
     elseif interp == "spline"
         println("warning: not implemented yet for type Field")
         itp = interpolate(τ, Δ, FritschCarlsonMonotonicInterpolation())
@@ -379,7 +380,7 @@ function vintagedistribution(TMIversion,γ::TMI.Grid,L,B,t₀,tf; tmodern= 2023)
     
     # # get interpolation object
     # if interp == "linear"
-    #     itp = LinearInterpolation(τ, Δ)
+    #     itp = linear_interpolation(τ, Δ)
     # elseif interp == "spline"
     #     println("warning: not implemented yet for type Field")
     #     itp = interpolate(τ, Δ, FritschCarlsonMonotonicInterpolation())
@@ -465,7 +466,7 @@ function deltaresponse(Δ,τΔ)
     tgedge = 0:floor(τmax)
     tg = 0.5:floor(τmax)
 
-    #    interp_linear = LinearInterpolation(τΔ, Δ)
+    #    interp_linear = linear_interpolation(τΔ, Δ)
     # Δhires = interp_linear(tgedge)
 
     itp = interpolate(τΔ, Δ, FritschCarlsonMonotonicInterpolation())
