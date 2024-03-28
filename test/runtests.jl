@@ -91,14 +91,14 @@ using Statistics
         #test: is the integral of ĝ equivalent to the output of the `meanage` function? (eqtn 2 of GH 2012) 
         τ = 0:4000 
         @time D̄_long = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = observe, args = (locs, γ)) # 90 seconds for 100, 98 seconds for 2000, 106 for 10k 
-        Ḡ_long, τ = globalmean_impulseresponse(D̄_long, τ)
+        Ḡ_long, τ2 = globalmean_impulseresponse(D̄_long, τ)
         # uses locs from top-level scope
         ā_obs = observe(meanage(TMIversion, Alu, γ), locs, γ)
         println("Mean age at sites ",ā_obs)
         ḡ = hcat(Ḡ_long...)
         #d̄ = hcat(D̄_long...)
 
-        ā = [cumsum(ḡ[i, :] .* τ)[end] for i in 1:2]
+        ā = [cumsum(ḡ[i, :] .* τ2)[end] for i in 1:2]
         #@test isapprox([cumsum(ḡ[i, :] .* τ)[end] for i in 1:10], meanage_obs, atol = 50)
 
         atol = 10
@@ -110,8 +110,13 @@ using Statistics
         @testset "vintage test" begin
 
             using Interpolations
-            y1 = vintagedistribution(2015,2020,D̄_long,τ)
 
+            y1 =  zeros(length(locs))
+            for  j in  eachindex(y1)
+                Δ  = [D̄_long[i][j]  for  i  in  eachindex(D̄_long)]
+                y1[j] = vintagedistribution(2015,2020,Δ,τ)
+            end
+            
             @test maximum(y1) ≤ 1.0
             #@test minimum(g) ≥ 0.0 # fails for MATLAB
 
