@@ -21,11 +21,7 @@ using Statistics
         using LinearAlgebra
 
         # read a water-mass surface patch from these choices
-        list = ("GLOBAL","ANT","SUBANT",
-                "NATL","NPAC","TROP","ARC",
-                "MED","ROSS","WED","LAB","GIN",
-                "ADEL","SUBANTATL","SUBANTPAC","SUBANTIND",
-                "TROPATL","TROPPAC","TROPIND")
+        list = TMI.regionlist()
 
         # choose water mass (i.e., surface patch) of interest
         region = list[1]
@@ -114,24 +110,22 @@ using Statistics
         @testset "vintage test" begin
 
             using Interpolations
-            #Δ,τ = read_stepresponse()  #  mat file not reachable from GDrive
-            g = vintagedistribution(2015,2020,D̄_long,τ)
+            y1 = vintagedistribution(2015,2020,D̄_long,τ)
 
-            @test maximum(g) ≤ 1.0
+            @test maximum(y1) ≤ 1.0
             #@test minimum(g) ≥ 0.0 # fails for MATLAB
 
             g2 = vintagedistribution(TMIversion,γ,L,B,2015,2020)
             @test maximum(g2) ≤ 1.0
             #@test minimum(g) ≥ 0.0 # fails for Julia
 
-            y1 = observe(g,locs,γ)
+            #y1 = TMI.observe(g,locs,γ)
             y2 = observe(g2,locs,γ)
 
             # relative difference between MATLAB and Julia computations
             for tt in 1:N
                 @test 100*abs(y1[tt] - y2[tt])/(y1[tt] + y2[tt]) < 1.0 # percent
             end
-
         end
 
     end
