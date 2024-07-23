@@ -46,6 +46,7 @@ tol = 1e-3
 println("ODE solved")
 
 s = s_array(sol, γ)
+filter_zeros(x) = ; 
 stime = [NaNMath.mean(sol.u[i]) for i ∈ 1:length(tsfc)]
 
 f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98),resolution = (1000, 700))
@@ -60,9 +61,9 @@ ax1.ylabel = "Avg Global Ocean Temp [°C]"
 xlims!(ax1, 0, 10)
 ax1.title = "Time = 0"
 depths = [2, 10, 20] 
-ax2, c2 = contourf(gbcd[1,1], γ.lon, γ.lat, s[1, :,:,depths[1]], levels = levels) 
-ax3, c3 = contourf(gbcd[1,2], γ.lon, γ.lat, s[1, :, :, depths[2]], levels = levels)
-ax4, c4 = contourf(gbcd[1,3], γ.lon, γ.lat, s[1, :, :, depths[3]], levels = levels)
+ax2, c2 = heatmap(gbcd[1,1], γ.lon, γ.lat, s[1, :,:,depths[1]], levels = levels) 
+ax3, c3 = heatmap(gbcd[1,2], γ.lon, γ.lat, s[1, :, :, depths[2]], levels = levels)
+ax4, c4 = heatmap(gbcd[1,3], γ.lon, γ.lat, s[1, :, :, depths[3]], levels = levels)
 Colorbar(gbcd[1,4], c4)
 ax2.title =  "Depth = "* string(γ.depth[depths[1]])
 ax3.title =  "Depth = "* string(γ.depth[depths[2]])
