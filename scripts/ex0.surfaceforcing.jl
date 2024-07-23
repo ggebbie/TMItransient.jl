@@ -9,11 +9,14 @@ Run instructions
     surface warming or cooling or non-uniform behavior
 (d) Gif output will be saved to "plots" dir 
 =#
+using Pkg
+Pkg.activate(".")
+Pkg.instantiate()
 
 using DrWatson
-@quickactivate "TMItransient"
-using Revise, TMI, Interpolations, NaNMath, DifferentialEquations, GLMakie 
-using LinearAlgebra, ForwardDiff,OrdinaryDiffEq, PreallocationTools, DrWatson, BenchmarkTools, Sundials 
+using Revise, TMI, Interpolations, CairoMakie, GLMakie
+using LinearAlgebra,OrdinaryDiffEq, 
+PreallocationTools, DrWatson, Sundials, NaNStatistics
 using TMItransient
 
 TMIversion = "modern_90x45x33_GH10_GH12"
@@ -46,24 +49,23 @@ tol = 1e-3
 println("ODE solved")
 
 s = s_array(sol, γ)
-filter_zeros(x) = ; 
-stime = [NaNMath.mean(sol.u[i]) for i ∈ 1:length(tsfc)]
+stime = [nanmean(s[i, :, :, :][γ.wet]) for i ∈ 1:length(tsfc)]
 
-f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98),resolution = (1000, 700))
+f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98),resolution = (1000, 700));
 
 ga = f[1,1] = GridLayout()
 gbcd = f[2,1] = GridLayout()
 
-levels = NaNMath.minimum(s):0.05:NaNMath.maximum(s)+0.05
-ax1, p1 = plot(ga[1,1], tsfc[begin:1], stime[begin:1])
+levels = nanminimum(s):0.05:nanmaximum(s)+0.05
+ax1, p1 = plot(ga[1,1], tsfc[begin:2], stime[begin:2])
 ax1.xlabel = "Time [y]"
-ax1.ylabel = "Avg Global Ocean Temp [°C]"
+ax1.ylabel = "Avg Surface Global Ocean Temp [°C]"
 xlims!(ax1, 0, 10)
 ax1.title = "Time = 0"
 depths = [2, 10, 20] 
-ax2, c2 = heatmap(gbcd[1,1], γ.lon, γ.lat, s[1, :,:,depths[1]], levels = levels) 
-ax3, c3 = heatmap(gbcd[1,2], γ.lon, γ.lat, s[1, :, :, depths[2]], levels = levels)
-ax4, c4 = heatmap(gbcd[1,3], γ.lon, γ.lat, s[1, :, :, depths[3]], levels = levels)
+ax2, c2 = heatmap(gbcd[1,1], γ.lon, γ.lat, s[1, :,:,depths[1]]) 
+ax3, c3 = heatmap(gbcd[1,2], γ.lon, γ.lat, s[1, :, :, depths[2]])
+ax4, c4 = heatmap(gbcd[1,3], γ.lon, γ.lat, s[1, :, :, depths[3]])
 Colorbar(gbcd[1,4], c4)
 ax2.title =  "Depth = "* string(γ.depth[depths[1]])
 ax3.title =  "Depth = "* string(γ.depth[depths[2]])

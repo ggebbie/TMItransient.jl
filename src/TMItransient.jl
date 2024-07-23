@@ -144,8 +144,8 @@ function setupODE(γ, u0,tsfc,dsfc,bc,L,B,t_int)
     li = linear_interpolation(tsfc, 1:length(tsfc))
 
     #Instantiate arrays that the diffeq solver will reallocate
-    LC = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl
-    BF = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl 
+    LC = PreallocationTools.dualcache(similar(u0)) #for PreallocationTools.jl
+    BF = PreallocationTools.dualcache(similar(u0)) #for PreallocationTools.jl 
     Cb = similar(Csfc[1,:])
     surface_ind = findall(x-> x[3] == 1, γ.I) #Find which points in γ.I are on the surface
     #setup ODEproblem and return 
@@ -174,8 +174,8 @@ function setupODE_nojac(γ, u0,tsfc,dsfc,bc,L,B,t_int)
     li = linear_interpolation(tsfc, 1:length(tsfc))
 
     #Instantiate arrays that the diffeq solver will reallocate
-    LC = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl
-    BF = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl 
+    LC = PreallocationTools.dualcache(similar(u0)) #for PreallocationTools.jl
+    BF = PreallocationTools.dualcache(similar(u0)) #for PreallocationTools.jl 
     Cb = similar(Csfc[1,:])
     surface_ind = findall(x-> x[3] == 1, γ.I) #Find which points in γ.I are on the surface
     #setup ODEproblem and return 
