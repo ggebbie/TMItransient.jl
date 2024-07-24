@@ -1,5 +1,6 @@
 #= 
-Run a transient simulation for 10 years forced by uniform surface warming 
+Run a transient simulation for 30 years forced by uniform CFC11 concentration. 
+Model assumes saturation at the sea surface, this can probably be modified quite easily.
 
 Data Input
   4° TMI grid
@@ -16,16 +17,21 @@ Pkg.instantiate()
 using DrWatson
 using Revise, TMI, Interpolations, CairoMakie, GLMakie
 using LinearAlgebra,OrdinaryDiffEq, 
-PreallocationTools, DrWatson, Sundials, NaNStatistics
+PreallocationTools, DrWatson, Sundials, NaNStatistics, NCDatasets
 using TMItransient
 
 TMIversion = "modern_90x45x33_GH10_GH12"
 @time A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion)
 
-tsfc = collect(1:10)
-bc = zeros(length(tsfc), size(γ.wet)[1], size(γ.wet)[2], size(γ.wet)[3])
-for i in 1:length(tsfc)
-    bc[i, :, :,1] .= 0.2 * (i-1) 
+ds = NCDataset(datadir("Tracer_atmospheric_histories_revised_2023.nc"),"r")
+
+tsfc = ds["time"][180:210]
+bcsfc = ds["CFC11_NH"][180:210]
+
+nt = length(tsfc)
+bc = zeros(nt, size(γ.wet)[1], size(γ.wet)[2], size(γ.wet)[3])
+for i in 1:nt
+    bc[i, :, :,1] .= bcsfc[i]
 end
 
 #load boundary condition data
@@ -40,7 +46,7 @@ u0 = c0[γ.wet]
 #Solver will print out what time step it is on
 
 println("Solving ODE")
-func,p, tspan = setupODE_nojac(γ, u0, tsfc, dsfc,bc,L,B,10)
+func,p, tspan = setupODE_nojac(γ, u0, tsfc, dsfc,bc,L,B,nt)
 prob = ODEProblem(func, u0, tspan, p)
 solver = CVODE_BDF(linear_solver=:GMRES)
 
@@ -57,10 +63,11 @@ ga = f[1,1] = GridLayout()
 gbcd = f[2,1] = GridLayout()
 
 levels = nanminimum(s):0.05:nanmaximum(s)+0.05
-ax1, p1 = plot(ga[1,1], tsfc[begin:2], stime[begin:2])
+ax1, p1 = plot(ga[1,1], tsfc[begin:1], stime[begin:1])
 ax1.xlabel = "Time [y]"
-ax1.ylabel = "Avg Surface Global Ocean Temp [°C]"
-xlims!(ax1, 0, 10)
+ax1.ylabel = "Avg Surface CFC11 Concentration [ppt]"
+tmin, tmax = extrema(tsfc)
+xlims!(ax1, tmin, tmax)
 ax1.title = "Time = 0"
 depths = [2, 10, 20] 
 ax2, c2 = heatmap(gbcd[1,1], γ.lon, γ.lat, s[1, :,:,depths[1]]) 
@@ -71,7 +78,7 @@ ax2.title =  "Depth = "* string(γ.depth[depths[1]])
 ax3.title =  "Depth = "* string(γ.depth[depths[2]])
 ax4.title =  "Depth = "* string(γ.depth[depths[3]])
 iterator = 2:length(tsfc)
-record(f, plotsdir("ce.gif"), iterator; framerate = 1) do d
+record(f, plotsdir("CFC11.mp4"), iterator; framerate = 1) do d
     plot!(ga[1,1], tsfc[begin:d], stime[begin:d])
     c2[3] = s[d,:, :, depths[1]]
     c3[3] = s[d,:, :, depths[2]]
