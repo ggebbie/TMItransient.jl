@@ -2,4 +2,6 @@
 *.jl.cov
 *.jl.mem
 /docs/build/
-plots/*
+*.gif
+*.mp4
+*.png
