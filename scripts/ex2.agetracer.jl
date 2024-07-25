@@ -73,6 +73,9 @@ ax2.title =  "Depth = "* string(γ.depth[depths[1]])
 ax3.title =  "Depth = "* string(γ.depth[depths[2]])
 ax4.title =  "Depth = "* string(γ.depth[depths[3]])
 iterator = 2:length(tsfc)
+
+#ocean "age" can be recovered by taking the difference between 
+#interior values and the surface boundary condition
 record(f, plotsdir("agetracer.mp4"), iterator; framerate = 1) do d
     plot!(ga[1,1], tsfc[begin:d], stime[begin:d])
     c2[3] = s[d,:, :, depths[1]]
