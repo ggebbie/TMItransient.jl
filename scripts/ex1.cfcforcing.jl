@@ -11,13 +11,12 @@ Run instructions
 (d) Gif output will be saved to "plots" dir 
 =#
 using Pkg
-Pkg.activate(".")
+Pkg.activate("./scripts")
 Pkg.instantiate()
 
-using DrWatson
-using Revise, TMI, Interpolations, CairoMakie, GLMakie
+using Revise, TMI, Interpolations, CairoMakie
 using LinearAlgebra,OrdinaryDiffEq, 
-PreallocationTools, DrWatson, Sundials, NaNStatistics, NCDatasets
+PreallocationTools, Sundials, NaNStatistics, NCDatasets
 using TMItransient
 
 TMIversion = "modern_90x45x33_GH10_GH12"
@@ -38,8 +37,8 @@ end
 dsfc = bc[begin,:, :, 1][γ.wet[:,:,1]]
 
 #make u0 vector 
-vec = Alu\bc[begin, :, :, :][γ.wet]
-c0 = tracerinit(vec, γ.I, γ.wet)
+u0vec = Alu\bc[begin, :, :, :][γ.wet]
+c0 = tracerinit(u0vec, γ.I, γ.wet)
 u0 = c0[γ.wet]
 
 #solve using CVODE_BDF alg - tested against other alg and works fastest
@@ -67,7 +66,11 @@ ax1, p1 = plot(ga[1,1], tsfc[begin:1], stime[begin:1])
 ax1.xlabel = "Time [y]"
 ax1.ylabel = "Avg Surface CFC11 Concentration [ppt]"
 tmin, tmax = extrema(tsfc)
+cmin, cmax = extrema(bcsfc)
+
 xlims!(ax1, tmin, tmax)
+ylims!(ax1, cmin, cmax)
+
 ax1.title = "Time = 0"
 depths = [2, 10, 20] 
 ax2, c2 = heatmap(gbcd[1,1], γ.lon, γ.lat, s[1, :,:,depths[1]]) 

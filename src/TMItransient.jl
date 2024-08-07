@@ -17,6 +17,7 @@ export readopt, ces_ncwrite, varying!,
     globalmean_stepresponse,
     globalmean_impulseresponse,
     stepresponse,  deltaresponse
+export datadir, plotsdir, srcdir
 #  read_stepresponse, 
 #  deltaresponse, taudeltaresponse,
 #  stability_check,
@@ -52,6 +53,9 @@ pkgdir(args...) = joinpath(pkgdir(), args...)
 
 datadir() = joinpath(pkgdir(),"data")
 datadir(args...) = joinpath(datadir(), args...)
+
+plotsdir() = joinpath(pkgdir(),"plots")
+plotsdir(args...) = joinpath(plotsdir(), args...)
 
 srcdir() = joinpath(pkgdir(),"src")
 srcdir(args...) = joinpath(srcdir(), args...)

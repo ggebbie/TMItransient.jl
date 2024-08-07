@@ -10,13 +10,12 @@ Run instructions
 (d) Gif output will be saved to "plots" dir 
 =#
 using Pkg
-Pkg.activate(".")
+Pkg.activate("./scripts")
 Pkg.instantiate()
 
-using DrWatson
-using Revise, TMI, Interpolations, CairoMakie, GLMakie
+using Revise, TMI, Interpolations, CairoMakie
 using LinearAlgebra,OrdinaryDiffEq, 
-PreallocationTools, DrWatson, Sundials, NaNStatistics
+PreallocationTools, Sundials, NaNStatistics
 using TMItransient
 
 TMIversion = "modern_90x45x33_GH10_GH12"
@@ -32,8 +31,8 @@ end
 dsfc = bc[begin,:, :, 1][γ.wet[:,:,1]]
 
 #make u0 vector 
-vec = Alu\bc[begin, :, :, :][γ.wet]
-c0 = tracerinit(vec, γ.I, γ.wet)
+u0vec = Alu\bc[begin, :, :, :][γ.wet]
+c0 = tracerinit(u0vec, γ.I, γ.wet)
 u0 = c0[γ.wet]
 
 #solve using CVODE_BDF alg - tested against other alg and works fastest
@@ -61,6 +60,7 @@ ax1, p1 = plot(ga[1,1], tsfc[begin:2], stime[begin:2])
 ax1.xlabel = "Time [y]"
 ax1.ylabel = "Avg Surface Global Ocean Temp [°C]"
 xlims!(ax1, 0, 10)
+ylims!(ax1, extrema(bc))
 ax1.title = "Time = 0"
 depths = [2, 10, 20] 
 ax2, c2 = heatmap(gbcd[1,1], γ.lon, γ.lat, s[1, :,:,depths[1]]) 
@@ -71,7 +71,7 @@ ax2.title =  "Depth = "* string(γ.depth[depths[1]])
 ax3.title =  "Depth = "* string(γ.depth[depths[2]])
 ax4.title =  "Depth = "* string(γ.depth[depths[3]])
 iterator = 2:length(tsfc)
-record(f, plotsdir("ce.gif"), iterator; framerate = 1) do d
+record(f, plotsdir("temperature.gif"), iterator; framerate = 1) do d
     plot!(ga[1,1], tsfc[begin:d], stime[begin:d])
     c2[3] = s[d,:, :, depths[1]]
     c3[3] = s[d,:, :, depths[2]]
