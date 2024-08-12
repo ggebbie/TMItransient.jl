@@ -17,6 +17,7 @@ export readopt, ces_ncwrite, varying!,
     globalmean_stepresponse,
     globalmean_impulseresponse,
     stepresponse,  deltaresponse
+export datadir, plotsdir, srcdir
 #  read_stepresponse, 
 #  deltaresponse, taudeltaresponse,
 #  stability_check,
@@ -52,6 +53,9 @@ pkgdir(args...) = joinpath(pkgdir(), args...)
 
 datadir() = joinpath(pkgdir(),"data")
 datadir(args...) = joinpath(datadir(), args...)
+
+plotsdir() = joinpath(pkgdir(),"plots")
+plotsdir(args...) = joinpath(plotsdir(), args...)
 
 srcdir() = joinpath(pkgdir(),"src")
 srcdir(args...) = joinpath(srcdir(), args...)
@@ -144,8 +148,8 @@ function setupODE(γ, u0,tsfc,dsfc,bc,L,B,t_int)
     li = linear_interpolation(tsfc, 1:length(tsfc))
 
     #Instantiate arrays that the diffeq solver will reallocate
-    LC = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl
-    BF = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl 
+    LC = PreallocationTools.dualcache(similar(u0)) #for PreallocationTools.jl
+    BF = PreallocationTools.dualcache(similar(u0)) #for PreallocationTools.jl 
     Cb = similar(Csfc[1,:])
     surface_ind = findall(x-> x[3] == 1, γ.I) #Find which points in γ.I are on the surface
     #setup ODEproblem and return 
@@ -174,8 +178,8 @@ function setupODE_nojac(γ, u0,tsfc,dsfc,bc,L,B,t_int)
     li = linear_interpolation(tsfc, 1:length(tsfc))
 
     #Instantiate arrays that the diffeq solver will reallocate
-    LC = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl
-    BF = DiffEqBase.dualcache(similar(u0)) #for PreallocationTools.jl 
+    LC = PreallocationTools.dualcache(similar(u0)) #for PreallocationTools.jl
+    BF = PreallocationTools.dualcache(similar(u0)) #for PreallocationTools.jl 
     Cb = similar(Csfc[1,:])
     surface_ind = findall(x-> x[3] == 1, γ.I) #Find which points in γ.I are on the surface
     #setup ODEproblem and return 

@@ -11,13 +11,14 @@
  Solves dc/dt = Lu + Bf 
 =#
 
-using Revise, TMI
-#using LinearAlgebra
-#using OrdinaryDiffEq
-#using Interpolations
-#using PyPlot
-#using NaNMath
-#using PythonPlot
+using Pkg
+Pkg.activate("./scripts")
+Pkg.instantiate()
+
+using Revise, TMI, Interpolations, CairoMakie
+using LinearAlgebra,OrdinaryDiffEq, 
+PreallocationTools, Sundials, NaNStatistics
+using TMItransient
 
 TMIversion = "modern_90x45x33_GH10_GH12"
 A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion);
