@@ -34,7 +34,7 @@ for i in 1:nt
 end
 
 #load boundary condition data
-dsfc = bc[begin,:, :, 1][γ.wet[:,:,1]]
+dsfc = bc[begin,:, :, 1][γ.wet[:,:,1]] #this is a dirichlet boundary condition, but should be a Robin boundary condition. 
 
 #make u0 vector 
 u0vec = Alu\bc[begin, :, :, :][γ.wet]
