@@ -14,8 +14,8 @@ using Statistics
     # compare g, g2 at N random points
     N = 2
     # get random locations that are wet (ocean)
+    # problem with vintage test if age = 0 (i.e., in the mixed layer)
     locs = [wetlocation(γ) for i in 1:N]
-    
 
     @testset "watermass_stepresponse" begin
         using LinearAlgebra
