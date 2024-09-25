@@ -20,7 +20,7 @@ PreallocationTools, Sundials, NaNStatistics, NCDatasets
 using TMItransient
 
 TMIversion = "modern_90x45x33_GH10_GH12"
-@time A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion)
+@time A, Alu, γ, TMIfile, L, B = config(TMIversion)
 
 ds = NCDataset(datadir("Tracer_atmospheric_histories_revised_2023.nc"),"r")
 

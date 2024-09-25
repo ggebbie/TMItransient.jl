@@ -19,7 +19,7 @@ PreallocationTools, Sundials, NaNStatistics
 using TMItransient
 
 TMIversion = "modern_90x45x33_GH10_GH12"
-@time A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion)
+@time A, Alu, γ, TMIfile, L, B = config(TMIversion)
 
 tsfc = collect(1:10)
 bc = zeros(length(tsfc), size(γ.wet)[1], size(γ.wet)[2], size(γ.wet)[3])
