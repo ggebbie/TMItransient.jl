@@ -23,7 +23,7 @@ using TMItransient
 #using PythonPlot
 
 TMIversion = "modern_90x45x33_GH10_GH12"
-A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion);
+A, Alu, γ, TMIfile, L, B = config(TMIversion);
 
 # read a water-mass surface patch from these choices
 list = ("GLOBAL","ANT","SUBANT",

@@ -9,7 +9,7 @@ using Statistics
     #TMIversion = "modern_180x90x33_GH10_GH12"
     #TMIversion = "modern_90x45x33_unpub12"
     
-    A, Alu, γ, TMIfile, L, B = config_from_nc(TMIversion);
+    A, Alu, γ, TMIfile, L, B = config(TMIversion);
 
     # compare g, g2 at N random points
     N = 2
