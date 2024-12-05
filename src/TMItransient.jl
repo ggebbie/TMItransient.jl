@@ -82,8 +82,9 @@ end
 
 """
     function varying!(du, u, p, t)
-    ODE function for varying boundary cond
-    Sets up dc/dt = L*C + B*f to be solved 
+
+ODE function for varying boundary cond
+Sets up dc/dt = L*C + B*f to be solved 
 # Arguments
 - `du`: dc/dt (must have this name for DifferentialEquations.jl to work
 - `u`: C, what we are solving for 
@@ -353,7 +354,7 @@ end
 """
     function deltaresponse
 
-    Take CDF and turn it into PDF
+Take CDF and turn it into PDF
 """
 function deltaresponse(Δ,τΔ)
 
@@ -419,9 +420,9 @@ end
 return_self(x) = x 
 
 """
-function globalmean_stepresponse
+    function globalmean_stepresponse
 
-    calculate the global mean response to "turning on" some region
+calculate the global mean response to "turning on" some region
 """
 function globalmean_stepresponse(TMIversion,region,γ,L,B,τ)
 
