@@ -31,6 +31,7 @@ using Statistics
         # add alg=QNDF() as optional argument
 
         @time D̄ = globalmean_stepresponse(TMIversion,region,γ,L,B,τ) # CDF
+        @time D̄ = globalmean_rampresponse(TMIversion,region,γ,L,B,τ) # CDF
 
         # should monotonically increase
         @test sum(diff(D̄) .≥ 0) == length(D̄) - 1

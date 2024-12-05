@@ -14,6 +14,7 @@ export readopt, ces_ncwrite, varying!,
     setupODE, setupODE_nojac, s_array,
     vintagedistribution, agedistribution,
     EvolvingField,
+    globalmean_rampresponse,
     globalmean_stepresponse,
     globalmean_impulseresponse,
     stepresponse,  deltaresponse
@@ -418,6 +419,55 @@ function stepresponse(TMIversion, b, γ, L, B, τ; eval_func = return_self, args
 end
 
 return_self(x) = x 
+
+function constant_forcing!(du,u,p)
+    # parameter 1: circulation matrix
+    # parameter 2: 3d forcing 
+    mul!(du, p[1], u) #avoid allocation
+    #println("1 ",maximum(du))
+    du[p[3]] .= p[2][p[3]] # set overriding boundary condition at right location. 
+    println("2 ",maximum(u))
+end
+
+"""
+    function globalmean_rampresponse
+
+calculate the global mean response to a ramp (linearly increasing value) in some region
+"""
+function globalmean_rampresponse(TMIversion, region, γ, L, B, τ)
+
+    # assume evenly spaced (uniform) time spacing
+    # Δτ = diff(τ)[1]
+    c₀ = vec(zeros(γ)) # preallocate initial condition Field
+    #q = vec(ones(γ)) # preallocate initial condition Field
+    b = TMI.surfaceregion(TMIversion,region)
+    q = B*vec(b)
+    #qfunc = t -> q
+    pfixed = [L,q,B.rowval]
+    f(du,u,p,t) = constant_forcing!(du, u, pfixed) #avoid allocation
+    #f(du,u,p,t) = mul!(du,  u, p[1] ) #avoid allocation
+    func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array
+
+    # make sure it starts at t=0 even if not saved there
+    tspan = (0*first(τ),last(τ))
+    #prob = ODEProblem(constant_forcing!, c₀, tspan, q) # Field type
+    prob = ODEProblem(func, c₀, tspan) # Field type
+
+    # possible algs:
+    # QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
+    integrator = init(prob, QNDF())
+
+    # better to grab input type somehow, instead of assuming Float64
+    Dmean = Float64[] # [0.0]; # for time 0
+
+    solfld = zeros(γ)
+    for (u, t) in TimeChoiceIterator(integrator, τ)
+        solfld.tracer[wet(solfld)] = u
+        push!(Dmean,mean(solfld))
+    end
+
+    return Dmean
+end
 
 """
     function globalmean_stepresponse
