@@ -1,19 +1,23 @@
 name = "TMItransient"
 uuid = "ab8155c7-aa61-46aa-9e27-6244078cebd2"
 authors = ["G Jake Gebbie <ggebbie@whoi.edu>"]
-version = "0.1.10"
+version = "0.1.11"
 
 [deps]
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 PreallocationTools = "d236fae5-4411-538c-8e31-a6e3d9e00b46"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 TMI = "582500f6-28c8-4d8f-aabe-b197735ec1d4"
 
 [compat]
 OrdinaryDiffEq = "=6.33.3"
+Pkg = "1.11.0"
+PreallocationTools = "0.4.11"
+Statistics = "1.11.1"
 julia = "1.10"
 
 [extras]
