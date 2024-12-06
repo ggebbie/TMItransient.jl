@@ -16,6 +16,7 @@ export readopt, ces_ncwrite, varying!,
     EvolvingField,
     globalmean_rampresponse,
     globalmean_stepresponse,
+    globalmean_stepresponse_with_restoring,
     globalmean_impulseresponse,
     stepresponse,  deltaresponse
 export datadir, plotsdir, srcdir
@@ -422,11 +423,12 @@ return_self(x) = x
 
 function constant_forcing!(du,u,p)
     # parameter 1: circulation matrix
-    # parameter 2: 3d forcing 
+    # parameter 2: 3d forcing
+    # parameter 3: where to override existing value and apply forcing
     mul!(du, p[1], u) #avoid allocation
     #println("1 ",maximum(du))
     du[p[3]] .= p[2][p[3]] # set overriding boundary condition at right location. 
-    println("2 ",maximum(u))
+    println("max(u) ",maximum(u))
 end
 
 """
@@ -469,6 +471,91 @@ function globalmean_rampresponse(TMIversion, region, γ, L, B, τ)
     return Dmean
 end
 
+#restored_forcing(u,p,t) = muladd(p[1],u,p[2])
+function restored_forcing(u,p,t)
+    println("maxu ",maximum(u))
+    return muladd(p[1],u,p[2])
+end
+function restored_forcing!(du, u,p,t)
+    println("maxu ",maximum(u))
+    println(p[1][1,:])
+    du[1:end] = muladd(p[1],u,p[2])
+end
+# function restored_forcing!(du, u, Lrestore, dutarget)
+#     println("maxu ",maximum(u))
+#     #println(p[1][1,:])
+#     println(Lrestore[1,:])
+#     du[1:end] = muladd(Lrestore,u,dutarget)
+# end
+
+# function restored_forcing!(du,u,p,t)
+#     # parameter 1: circulation matrix
+#     # parameter 2: du target value
+#     println("L1 b4 ",p[1][1,:])
+    
+#     mul!(du, p[1], u) #avoid allocation
+#     # parameter 4 : restoring rate (yr^-1)
+#     #du[p[3]] .= p[2][p[3]] # set overriding boundary condition at right location.
+
+#     #du[p[3]] .= -(1/p[4]) * (u[p[3]] - p[2][p[3]]) # set overriding and restoring boundary condition at right location. 
+#     du += p[2]
+#     println("maxu ",maximum(u))
+
+#     println("L1 aft ",p[1][1,:])
+# end
+
+"""
+    function globalmean_stepresponse_with_restoring
+
+calculate the global mean response to an ocean restored to a step function
+"""
+function globalmean_stepresponse_with_restoring(TMIversion, region, γ, Lrestore, B, τ, τrestore)
+
+    # assume evenly spaced (uniform) time spacing
+    # Δτ = diff(τ)[1]
+    c₀ = vec(zeros(γ)) # preallocate initial condition Field
+    b = TMI.surfaceregion(TMIversion,region)
+    θtarget = B*vec(b)
+
+    # reset L in mixed layer or surface
+    # for i in B.rowval
+    #     L[i,i] = -1.0 / τrestore
+    # end
+
+    dutarget = (1.0/τrestore) * θtarget # set overriding and restoring boundary condition at right location.
+    pfixed = (Lrestore, dutarget)
+    f(du,u,p,t) = restored_forcing!(du, u, p, t) #avoid allocation
+    #f(du,u,p,t) = restored_forcing!(du, u, Lrestore, dutarget) #avoid allocation
+
+    jacobian(du, u, p, t) = Lrestore 
+
+    #f(u,p,t) = restored_forcing(u, p, t) # take on some allocation
+    #f(du,u,p,t) = mul!(du,  u, p[1] ) #avoid allocation
+    func = ODEFunction(f, jac = jacobian) #jac_prototype for sparse array
+
+    # make sure it starts at t=0 even if not saved there
+    tspan = (0*first(τ),last(τ))
+    #prob = ODEProblem(constant_forcing!, c₀, tspan, q) # Field type
+    prob = ODEProblem(func, c₀, tspan, pfixed) # Field type
+    # prob = ODEProblem(func, c₀, tspan) # Field type
+
+    # possible algs:
+    # QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
+    integrator = init(prob, QNDF())
+    #integrator = init(prob, TRBDF2())
+
+    # better to grab input type somehow, instead of assuming Float64
+    Dmean = Float64[] # [0.0]; # for time 0
+
+    solfld = zeros(γ)
+    for (u, t) in TimeChoiceIterator(integrator, τ)
+        solfld.tracer[wet(solfld)] = u
+        push!(Dmean,mean(solfld))
+    end
+
+    return Dmean
+end
+
 """
     function globalmean_stepresponse
 
@@ -489,7 +576,9 @@ function globalmean_stepresponse(TMIversion,region,γ,L,B,τ)
 
     # possible algs:
     # QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
-    integrator = init(prob,QNDF())
+    #integrator = init(prob,QNDF())
+    integrator = init(prob,QNDF1())
+    #integrator = init(prob,SSPSDIRK2())
 
     # better to grab input type somehow, instead of assuming Float64
     Dmean = Float64[] # [0.0]; # for time 0

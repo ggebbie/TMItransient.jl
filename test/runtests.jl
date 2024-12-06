@@ -15,7 +15,6 @@ using Statistics
     N = 2
     # get random locations that are wet (ocean)
     locs = [wetlocation(γ) for i in 1:N]
-    
 
     @testset "watermass_stepresponse" begin
         using LinearAlgebra
@@ -26,10 +25,35 @@ using Statistics
         # choose water mass (i.e., surface patch) of interest
         region = list[1]
         #tspan = (0.0, 5.0)
-        τ = 0:3
+        τ = 0.0:0.1:0.5
         # replace with function call
         # add alg=QNDF() as optional argument
 
+        τrestore = 0.5 # yr
+        Lrestore = deepcopy(L)
+        # reset L in mixed layer or surface
+        for i in B.rowval
+            Lrestore[i,i] = -1.0 / τrestore
+        end
+        b = TMI.surfaceregion(TMIversion,region)
+        θtarget = B*vec(b)
+        dutarget = (1.0/τrestore) * θtarget # set overriding and restoring boundary condition at right location.
+
+        # test that core algorithm does right thing
+        function restored_forcing_test!(du, u,p,t)
+            println("maxu ",maximum(u))
+            println(p[1][1,:])
+            du[1:end] = muladd(p[1],u,p[2])
+        end
+
+        # works ok
+        u = vec(zeros(γ))
+        du = copy(u)
+        pfixed =(Lrestore, dutarget)
+        restored_forcing_test!(du, u, pfixed, nothing)
+
+        @time D̄ = globalmean_stepresponse_with_restoring(TMIversion, region, γ, Lconst, B, τ, τrestore) # CDF
+        
         @time D̄ = globalmean_stepresponse(TMIversion,region,γ,L,B,τ) # CDF
         @time D̄ = globalmean_rampresponse(TMIversion,region,γ,L,B,τ) # CDF
 
