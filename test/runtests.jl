@@ -39,11 +39,14 @@ using Statistics
         θtarget = B*vec(b)
         dutarget = (1.0/τrestore) * θtarget # set overriding and restoring boundary condition at right location.
 
+        using SparseConnectivityTracer, ADTypes
+        detector = TracerSparsityDetector()
+        
         # test that core algorithm does right thing
         function restored_forcing_test!(du, u,p,t)
             println("maxu ",maximum(u))
             println(p[1][1,:])
-            du[1:end] = muladd(p[1],u,p[2])
+            du[begin:end] = muladd(p[1],u,p[2])
         end
 
         # works ok
@@ -52,7 +55,25 @@ using Statistics
         pfixed =(Lrestore, dutarget)
         restored_forcing_test!(du, u, pfixed, nothing)
 
-        @time D̄ = globalmean_stepresponse_with_restoring(TMIversion, region, γ, Lconst, B, τ, τrestore) # CDF
+        jac_sparsity = ADTypes.jacobian_sparsity(
+            (du,u) -> restored_forcing_test!(du, u , pfixed, 0.0), du, u, detector)
+
+        f(du,u,p,t) = restored_forcing!(du, u, p, t) #avoid allocation
+        func = ODEFunction(f, jac_prototype = float.(jac_sparsity)) #jac_prototype for sparse array
+        # make sure it starts at t=0 even if not saved there
+        tspan = (0*first(τ),last(τ))
+        #prob = ODEProblem(constant_forcing!, c₀, tspan, q) # Field type
+        c₀ = vec(zeros(γ)) # preallocate initial condition Field
+        prob = ODEProblem(func, c₀, tspan, pfixed) # Field type
+        # prob = ODEProblem(func, c₀, tspan) # Field type
+
+        # possible algs:
+        # QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
+        integrator = init(prob, QNDF())
+        #integrator = init(prob, TRBDF2())
+       
+        
+        @time D̄ = globalmean_stepresponse_with_restoring(TMIversion, region, γ, Lrestore, B, τ, τrestore) # CDF
         
         @time D̄ = globalmean_stepresponse(TMIversion,region,γ,L,B,τ) # CDF
         @time D̄ = globalmean_rampresponse(TMIversion,region,γ,L,B,τ) # CDF

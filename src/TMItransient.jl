@@ -9,6 +9,7 @@ using Interpolations
 using Statistics
 #using MAT
 #using NaNMath
+using SparseConnectivityTracer, ADTypes
 
 export readopt, ces_ncwrite, varying!,
     setupODE, setupODE_nojac, s_array,
@@ -524,15 +525,19 @@ function globalmean_stepresponse_with_restoring(TMIversion, region, γ, Lrestore
 
     dutarget = (1.0/τrestore) * θtarget # set overriding and restoring boundary condition at right location.
     pfixed = (Lrestore, dutarget)
-    f(du,u,p,t) = restored_forcing!(du, u, p, t) #avoid allocation
+
+    jac_sparsity = ADTypes.jacobian_sparsity(
+        (du,u) -> restored_forcing_test!(du, u , pfixed, 0.0), du, u, detector)
+
     #f(du,u,p,t) = restored_forcing!(du, u, Lrestore, dutarget) #avoid allocation
-
-    jacobian(du, u, p, t) = Lrestore 
-
     #f(u,p,t) = restored_forcing(u, p, t) # take on some allocation
     #f(du,u,p,t) = mul!(du,  u, p[1] ) #avoid allocation
-    func = ODEFunction(f, jac = jacobian) #jac_prototype for sparse array
+    f(du,u,p,t) = restored_forcing!(du, u, p, t) #avoid allocation
 
+    #func = ODEFunction(f, jac = jacobian) #jac_prototype for sparse array
+    func = ODEFunction(f, jac_prototype = float.(jac_sparsity)) #jac_prototype for sparse array
+    println("func defined")
+    
     # make sure it starts at t=0 even if not saved there
     tspan = (0*first(τ),last(τ))
     #prob = ODEProblem(constant_forcing!, c₀, tspan, q) # Field type
@@ -549,8 +554,8 @@ function globalmean_stepresponse_with_restoring(TMIversion, region, γ, Lrestore
 
     solfld = zeros(γ)
     for (u, t) in TimeChoiceIterator(integrator, τ)
-        solfld.tracer[wet(solfld)] = u
-        push!(Dmean,mean(solfld))
+        #solfld.tracer[wet(solfld)] = u
+        #push!(Dmean,mean(solfld))
     end
 
     return Dmean
