@@ -5,6 +5,7 @@ version = "0.1.11"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
+ExponentialUtilities = "d4d017d3-3776-5f7e-afef-a10c40355c18"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
@@ -18,6 +19,7 @@ TMI = "582500f6-28c8-4d8f-aabe-b197735ec1d4"
 
 [compat]
 ADTypes = "1.12.0"
+ExponentialUtilities = "1.27.0"
 Revise = "3.6.4"
 SparseConnectivityTracer = "0.6.9"
 TMI = "0.2.19"

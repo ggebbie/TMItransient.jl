@@ -9,6 +9,7 @@ using Interpolations
 using Statistics
 #using MAT
 #using NaNMath
+using ExponentialUtilities
 using SparseConnectivityTracer, ADTypes
 
 export readopt, ces_ncwrite, varying!,
@@ -17,6 +18,7 @@ export readopt, ces_ncwrite, varying!,
     EvolvingField,
     globalmean_rampresponse,
     globalmean_stepresponse,
+    globalmean_stepresponse_exponential, 
     globalmean_stepresponse_with_restoring,
     globalmean_impulseresponse,
     stepresponse,  deltaresponse
@@ -562,11 +564,59 @@ function globalmean_stepresponse_with_restoring(TMIversion, region, γ, Lrestore
 end
 
 """
-    function globalmean_stepresponse
+    function globalmean_stepresponse(TMIversion,region,γ,L,B,τ; alg=:exponential)
+
+calculate the global mean response to "turning on" some region
+
+wrapper for multiple algorithms
+"""
+function globalmean_stepresponse(TMIversion,region,γ,L,B,τ; alg=:exponential)
+    if alg == :exponential
+        return globalmean_stepresponse_exponential(TMIversion,region,γ,L,B,τ)
+    elseif alg == :qndf
+        return globalmean_stepresponse_qndf(TMIversion,region,γ,L,B,τ)
+    end
+end
+
+"""
+    function globalmean_stepresponse_exponential
+
+calculate the global mean response to "turning on" some region
+
+use ExponentialUtilities.jl
+
+ Instead of computing the matrix function first and then computing the matrix-vector product, the common alternative is to construct a Krylov subspaceK_m(A,b) and then approximate the matrix-phi-vector product.
+"""
+function globalmean_stepresponse_exponential(TMIversion,region,γ,L,B,τ)
+
+    b = TMI.surfaceregion(TMIversion,region)
+    c₀ = B* vec(b)
+
+    # better to grab input type somehow, instead of assuming Float64
+    Dmean = Float64[] # [0.0]; # for time 0
+    
+    c = c₀ # zeros(γ)
+    vfield = cellvolume(γ)
+    vtmp = vfield.tracer[wet(vfield)]
+    global v = vtmp./sum(vtmp) # weights for mean
+    for i in eachindex(τ)
+        if i == 1
+            Δt = τ[1]
+        else
+            Δt = τ[i] - τ[i-1]
+        end
+        c =  expv(Δt, L, c)
+        push!(Dmean, sum(c.*v))
+    end
+    return Dmean
+end
+
+"""
+    function globalmean_stepresponse_qndf
 
 calculate the global mean response to "turning on" some region
 """
-function globalmean_stepresponse(TMIversion,region,γ,L,B,τ)
+function globalmean_stepresponse_qndf(TMIversion,region,γ,L,B,τ)
 
     # assume evenly spaced (uniform) time spacing
     # Δτ = diff(τ)[1]
