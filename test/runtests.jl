@@ -36,12 +36,12 @@ using ExponentialUtilities
         # τ = exp.(range(0,log(τmax + 1.0), nτ)).-1.0
         @testset "exponential" begin
             # try ExponentialUtilities
-            @time D̄ = TMItransient.globalmean_stepresponse(TMIversion,region,γ,L,B,τ) # CDF
+            @time D̄ = TMItransient.globalmean_stepresponse(TMIversion, γ, L, B, τ) # CDF
 
             # should monotonically increase
             @test sum(diff(D̄) .≥ 0) == length(D̄) - 1
 
-            Ḡ,tḠ = globalmean_impulseresponse(TMIversion,region,γ,L,B,τ,alg=:centered)
+            Ḡ,tḠ = TMItransient.globalmean_impulseresponse(TMIversion, γ, L, B, τ, alg=:centered)
         
             # Ḡ should be non-negative
             @test sum(Ḡ .≥ 0) == length(Ḡ)
@@ -124,7 +124,7 @@ using ExponentialUtilities
         #this should have the same result as globalmean_stepresponse 
         @time D̄_new = TMItransient.stepresponse_exponential(TMIversion, b, γ, L, B, τ, eval_func = mean) #103s
         @time D̄_old = TMItransient.globalmean_stepresponse_exponential(TMIversion, γ, L, B, τ) # CDF
-        @test sum(D̄_new .== D̄_old) == length(τ)   # 105
+        @test sum(D̄_new .== D̄_old) == length(τ)   
 
         #get output in Field type 
         @time D̄_new_allout = stepresponse(TMIversion, b, γ, L, B, τ[1:2]) #103s
@@ -134,12 +134,10 @@ using ExponentialUtilities
         #locs = [wetlocation(γ) for i in 1:N]
         D̄_observed = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = observe, args = (locs, γ)) 
 
-        #I'm pretty sure globalmean_impulseresponse is generic enough to work with any of my D̄
-        #turns out it works for all of them besides the one that is Field type (number 3).
-        # We'd have to define division in order for that to work. Also looks like there's an issue with subtraction? 
+        # works for all now, 4 Feb 2025
         for (i, d) in enumerate([D̄_new, D̄_old, D̄_new_allout, D̄_observed])
             try
-                globalmean_impulseresponse(d, τ, alg = :centered)
+                impulseresponse(d, τ, alg = :centered)
             catch
                 println("impulseresponse doesn't work for D̄ number: " * string(i))
             end   

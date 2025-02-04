@@ -544,17 +544,18 @@ function globalmean_stepresponse_with_restoring(TMIversion, region, γ, Lrestore
 end
 
 """
-    function globalmean_stepresponse(TMIversion,region,γ,L,B,τ; alg=:exponential)
+    function globalmean_stepresponse(TMIversion, γ, L, B, τ; alg=:exponential)
 
 calculate the global mean response to "turning on" some region
 
 wrapper for multiple algorithms
 """
-function globalmean_stepresponse(TMIversion,region,γ,L,B,τ; alg=:exponential)
+function globalmean_stepresponse(TMIversion, γ, L, B, τ; alg=:exponential)
     if alg == :exponential
-        return globalmean_stepresponse_exponential(TMIversion,region,γ,L,B,τ)
+        return globalmean_stepresponse_exponential(TMIversion, γ, L, B, τ)
     elseif alg == :qndf
-        return globalmean_stepresponse_qndf(TMIversion,region,γ,L,B,τ)
+        error("not yet implemented")
+        #return globalmean_stepresponse_qndf(TMIversion, γ,L,B,τ)
     end
 end
 
@@ -730,15 +731,16 @@ end
 
     Does leapfrog satisfy normalization?
 """
-globalmean_impulseresponse(TMIversion,region,γ,L,B,τ;alg=:centered) = globalmean_impulseresponse(globalmean_stepresponse(TMIversion,region,γ,L,B,τ),τ,alg=alg)
+globalmean_impulseresponse(TMIversion, γ, L, B, τ; alg=:centered) =
+    impulseresponse(globalmean_stepresponse(TMIversion, γ, L, B, τ), τ, alg=alg)
 
 """
-    function globalmean_impulseresponse
+    function impulseresponse
 
     based on a globalmean_stepresponse D̄, compute the impulse response
     can be done via centered or leapfrog difference 
 """
-function globalmean_impulseresponse(D̄,τ;alg=:centered)
+function impulseresponse(D̄,τ;alg=:centered)
     if alg == :centered
         ihi = 2:length(D̄)
         ilo = 1:(length(D̄)-1)
