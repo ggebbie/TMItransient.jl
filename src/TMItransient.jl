@@ -1,6 +1,6 @@
 module TMItransient
 
-using OrdinaryDiffEq
+#using OrdinaryDiffEq
 using PreallocationTools
 using LinearAlgebra
 using NCDatasets
@@ -10,7 +10,7 @@ using Statistics
 #using MAT
 #using NaNMath
 using ExponentialUtilities
-using SparseConnectivityTracer, ADTypes
+#using SparseConnectivityTracer, ADTypes
 
 export readopt, ces_ncwrite, varying!,
     setupODE, setupODE_nojac, s_array,
