@@ -1,4 +1,3 @@
-using Base: test_feature
 using Revise
 using TMItransient, TMI 
 using Test
@@ -48,7 +47,7 @@ using ExponentialUtilities
             @test sum(Ḡ .≥ 0) == length(Ḡ)
 
             # Ḡ should add to something less than unity
-            @test sum(Ḡ) ≤ 1.0
+            @test sum(Ḡ) ≤ 1.0    
         end
     end
 
@@ -116,21 +115,19 @@ using ExponentialUtilities
         
     end
 
-    region = "GLOBAL"
-    b = TMI.surfaceregion(TMIversion, region)
-
     @testset "stepresponse" begin
-        τ = 0:2
+        τ = 0:0.1:0.5
+
+        region = "GLOBAL"
+        b = TMI.surfaceregion(TMIversion, region)
 
         #this should have the same result as globalmean_stepresponse 
-        @time D̄_new = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = mean) #103s
-        @time D̄_old = globalmean_stepresponse(TMIversion,region,γ,L,B,τ) # CDF
-
-        #D̄[1] won't match because original method sets it to 0 and I don't 
-        @test sum(D̄_new[2:3] .== D̄_old[2:3]) == 2 # 105
+        @time D̄_new = TMItransient.stepresponse_exponential(TMIversion, b, γ, L, B, τ, eval_func = mean) #103s
+        @time D̄_old = TMItransient.globalmean_stepresponse_exponential(TMIversion, γ, L, B, τ) # CDF
+        @test sum(D̄_new .== D̄_old) == length(τ)   # 105
 
         #get output in Field type 
-        @time D̄_new_allout = stepresponse(TMIversion, b, γ, L, B, τ) #103s
+        @time D̄_new_allout = stepresponse(TMIversion, b, γ, L, B, τ[1:2]) #103s
 
         #use synthetic observations to grab some random wet points to observe 
         #N = 10

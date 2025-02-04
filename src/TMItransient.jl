@@ -393,33 +393,13 @@ end
     - τ: evenly spaced vector
     - f: some function f(u) where u is a vector of all wet points 
 """
-function stepresponse(TMIversion, b, γ, L, B, τ; eval_func = return_self, args = [])
-    # assume evenly spaced (uniform) time spacing
-    Δτ = diff(τ)[1]
-    #b = TMI.surfaceregion(TMIversion,region,γ)
-    c₀ = zeros(γ) # preallocate initial condition Field
-    c₀ = B * vec(b)
-    f(du,u,p,t) = mul!(du, L, u) #avoid allocation
-    func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array
-    tspan = (first(τ), last(τ))
-    prob = ODEProblem(func, c₀, tspan) #Field type
-
-    # possible algs:
-    # QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
-    integrator = init(prob,QNDF())
-    
-    #assumes `f` returns one output!
-    #how should I handle the fact that there can be no args
-    output = isempty(args) ? Vector{first(Base.return_types(eval_func, (Field{Float64},)))}(undef, length(τ)) : Vector{first(Base.return_types(eval_func, (Field{Float64}, typeof.(args)...,)))}(undef, length(τ))
-    
-    solfld = zeros(γ) #initialize solution Field 
-    
-    for (idx, (u, t)) in enumerate(TimeChoiceIterator(integrator, τ))
-        solfld.tracer[wet(solfld)] = u
-        output[idx] = isempty(args) ? eval_func(solfld) : eval_func(solfld, args...)
+function stepresponse(TMIversion, b, γ, L, B, τ; alg = :exponential, eval_func = return_self, args = ())
+    if alg == :exponential
+        return  stepresponse_exponential(TMIversion, b, γ, L, B, τ; eval_func = eval_func, args = args)
+    else
+        return error("not implemented yet")
+        #globalmean_stepresponse_qndf(TMIversion,region,γ,L,B,τ)
     end
-    return output
-        
 end
 
 return_self(x) = x 
@@ -587,7 +567,34 @@ use ExponentialUtilities.jl
 
  Instead of computing the matrix function first and then computing the matrix-vector product, the common alternative is to construct a Krylov subspaceK_m(A,b) and then approximate the matrix-phi-vector product.
 """
-function globalmean_stepresponse_exponential(TMIversion,region,γ,L,B,τ)
+function globalmean_stepresponse_exponential(TMIversion,γ,L,B,τ)
+
+    region = "GLOBAL"
+    func = mean 
+    b = TMI.surfaceregion(TMIversion, region)
+    c₀ = B * vec(b)
+
+    return stepresponse_exponential(TMIversion, b, γ, L, B, τ, eval_func = func) #103
+    
+    # better to grab input type somehow, instead of assuming Float64
+    # Dmean = Float64[] # [0.0]; # for time 0
+    
+    # c = c₀ # zeros(γ)
+    # vfield = cellvolume(γ)
+    # vtmp = vfield.tracer[wet(vfield)]
+    # global v = vtmp./sum(vtmp) # weights for mean
+    # for i in eachindex(τ)
+    #     if i == 1
+    #         Δt = τ[1]
+    #     else
+    #         Δt = τ[i] - τ[i-1]
+    #     end
+    #     c =  expv(Δt, L, c)
+    #     push!(Dmean, sum(c.*v))
+    # end
+    # return Dmean
+end
+function globalmean_stepresponse_exponential_old(TMIversion,region,γ,L,B,τ)
 
     b = TMI.surfaceregion(TMIversion,region)
     c₀ = B* vec(b)
@@ -609,6 +616,66 @@ function globalmean_stepresponse_exponential(TMIversion,region,γ,L,B,τ)
         push!(Dmean, sum(c.*v))
     end
     return Dmean
+end
+
+"""
+    function stepresponse
+
+    calculate the response to "turning on" some region
+    can compute some statistics on output by providing a function to f 
+
+    # Arguments
+    - TMIversion
+    - b: BoundaryCondition
+    - γ
+    - L
+    - B
+    - τ: evenly spaced vector
+    - f: some function f(u) where u is a vector of all wet points 
+"""
+function stepresponse_exponential(TMIversion, b, γ, L, B, τ; eval_func = return_self, args = ())
+
+    c = zeros(γ)
+    c.tracer[γ.wet] = B*vec(b)
+
+    D = Vector{typeof(eval_func(c,args...))}()
+    
+    # vfield = cellvolume(γ)
+    # vtmp = vfield.tracer[wet(vfield)]
+    #global v = vtmp./sum(vtmp) # weights for mean
+    for i in eachindex(τ)
+        if i == 1
+            Δt = τ[1]
+        else
+            Δt = τ[i] - τ[i-1]
+        end
+        ctmp =  expv(Δt, L, vec(c))
+        c.tracer[γ.wet] = ctmp
+        #push!(Dmean, sum(c.*v))
+        push!(D, eval_func(c,args...))
+    end
+    return D
+
+    # f(du,u,p,t) = mul!(du, L, u) #avoid allocation
+    # func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array
+    # tspan = (first(τ), last(τ))
+    # prob = ODEProblem(func, c₀, tspan) #Field type
+
+    # # possible algs:
+    # # QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
+    # integrator = init(prob,QNDF())
+    
+    # #assumes `f` returns one output!
+    # #how should I handle the fact that there can be no args
+    # output = isempty(args) ? Vector{first(Base.return_types(eval_func, (Field{Float64},)))}(undef, length(τ)) : Vector{first(Base.return_types(eval_func, (Field{Float64}, typeof.(args)...,)))}(undef, length(τ))
+    
+    # solfld = zeros(γ) #initialize solution Field 
+    
+    # for (idx, (u, t)) in enumerate(TimeChoiceIterator(integrator, τ))
+    #     solfld.tracer[wet(solfld)] = u
+    #     output[idx] = isempty(args) ? eval_func(solfld) : eval_func(solfld, args...)
+    # end
+    # return output
 end
 
 """

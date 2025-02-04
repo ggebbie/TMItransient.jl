@@ -30,10 +30,10 @@ using ExponentialUtilities
         τ = 0.0:0.1:0.5
         #τ = vcat(0.0:0.1:10,10:2000) # sample Common Era run
 
-        # doesn't converge to 1 as well (overshoots)
+        # doesn't converge to 1 as well if timestep is always 1 year (overshoots)
         # nτ = 10000
         # τmax = 5000
-        # τ = exp.(range(0,log(τmax + 1.0), nτ)).-1.0
+        # τ = exp.(range(0,log(τmax + 1.0), nτ)).-1.0 # goes unstable at long times as Δt gets large
         @testset "exponential" begin
             # try ExponentialUtilities
             @time D̄ = TMItransient.globalmean_stepresponse(TMIversion,region,γ,L,B,τ) # CDF
@@ -51,58 +51,6 @@ using ExponentialUtilities
         end
     end
 
-    # @testset "QNDF" begin
-        #     # replace with function call
-        #     # add alg=QNDF() as optional argument
-        #     b = TMI.surfaceregion(TMIversion,region)
-        #     θtarget = B*vec(b)
-        #     τrestore = 0.5 # yr
-        #     Lrestore = deepcopy(L)
-        #     # reset L in mixed layer or surface
-        #     for i in B.rowval
-        #         Lrestore[i,i] = -1.0 / τrestore
-        #     end
-        #     dutarget = (1.0/τrestore) * θtarget # set overriding and restoring boundary condition at right location.
-
-        #     using SparseConnectivityTracer, ADTypes
-        #     detector = TracerSparsityDetector()
-        
-        #     # test that core algorithm does right thing
-        #     function restored_forcing_test!(du, u,p,t)
-        #         println("maxu ",maximum(u))
-        #         println(p[1][1,:])
-        #         du[begin:end] = muladd(p[1],u,p[2])
-        #     end
-
-        #     # works ok
-        #     u = vec(zeros(γ))
-        #     du = copy(u)
-        #     pfixed =(Lrestore, dutarget)
-        #     restored_forcing_test!(du, u, pfixed, nothing)
-
-        #     jac_sparsity = ADTypes.jacobian_sparsity(
-        #         (du,u) -> restored_forcing_test!(du, u , pfixed, 0.0), du, u, detector)
-
-        #     f(du,u,p,t) = restored_forcing!(du, u, p, t) #avoid allocation
-        #     func = ODEFunction(f, jac_prototype = float.(jac_sparsity)) #jac_prototype for sparse array
-        #     # make sure it starts at t=0 even if not saved there
-        #     tspan = (0*first(τ),last(τ))
-        #     #prob = ODEProblem(constant_forcing!, c₀, tspan, q) # Field type
-        #     c₀ = vec(zeros(γ)) # preallocate initial condition Field
-        #     prob = ODEProblem(func, c₀, tspan, pfixed) # Field type
-        #     # prob = ODEProblem(func, c₀, tspan) # Field type
-
-        #     # possible algs:
-        #     # QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
-        #     integrator = init(prob, QNDF())
-        #     #integrator = init(prob, TRBDF2())
-        
-        #     @time D̄ = globalmean_stepresponse_with_restoring(TMIversion, region, γ, Lrestore, B, τ, τrestore) # CDF
-
-        #     @time D̄ = globalmean_stepresponse(TMIversion,region,γ,L,B,τ) # CDF
-        #     @time D̄ = globalmean_rampresponse(TMIversion,region,γ,L,B,τ) # CDF
-        # end
-
         # compare to reading same thing from MATLAB output.
         # Δ,τmat = read_stepresponse()
 
@@ -113,7 +61,7 @@ using ExponentialUtilities
         #     @test ϵ < 1.0 # percent
         # end
         
-    end
+    #end
 
     region = "GLOBAL"
     b = TMI.surfaceregion(TMIversion, region)
