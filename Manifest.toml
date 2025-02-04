@@ -2,22 +2,7 @@
 
 julia_version = "1.11.3"
 manifest_format = "2.0"
-project_hash = "e85aa18eb9c95920c514b4fd49f03423ea0753ea"
-
-[[deps.ADTypes]]
-git-tree-sha1 = "ab3815fc06f9c171ee81277f00ecee19b47e0b91"
-uuid = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
-version = "1.12.0"
-
-    [deps.ADTypes.extensions]
-    ADTypesChainRulesCoreExt = "ChainRulesCore"
-    ADTypesConstructionBaseExt = "ConstructionBase"
-    ADTypesEnzymeCoreExt = "EnzymeCore"
-
-    [deps.ADTypes.weakdeps]
-    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-    ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
-    EnzymeCore = "f151be2c-9106-41f4-ab19-57ee4f262869"
+project_hash = "9dd351b69616209f6605e92a1a31388f1cbb3759"
 
 [[deps.Adapt]]
 deps = ["LinearAlgebra", "Requires"]
