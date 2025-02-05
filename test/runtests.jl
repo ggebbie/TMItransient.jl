@@ -27,27 +27,35 @@ using ExponentialUtilities
         # choose water mass (i.e., surface patch) of interest
         region = list[1]
  
-        τ = 0.0:0.1:0.5
+
         #τ = vcat(0.0:0.1:10,10:2000) # sample Common Era run
 
         # doesn't converge to 1 as well (overshoots)
         # nτ = 10000
         # τmax = 5000
         # τ = exp.(range(0,log(τmax + 1.0), nτ)).-1.0
+
+        # try ExponentialUtilities
         @testset "exponential" begin
-            # try ExponentialUtilities
-            @time D̄ = TMItransient.globalmean_stepresponse(TMIversion, γ, L, B, τ) # CDF
 
-            # should monotonically increase
-            @test sum(diff(D̄) .≥ 0) == length(D̄) - 1
-
-            Ḡ,tḠ = TMItransient.globalmean_impulseresponse(TMIversion, γ, L, B, τ, alg=:centered)
+            for i = 1:2
+                if i == 1
+                    τ = 0.0:0.1:0.5
+                else
+                    τ = 0.1:0.1:0.5
+                end
+            
+                @time D̄, τ2 = TMItransient.globalmean_stepresponse(TMIversion, γ, L, B, τ) # CDF
+                # should monotonically increase
+                @test sum(diff(D̄) .≥ 0) == length(D̄) - 1
+                Ḡ,tḠ = TMItransient.globalmean_impulseresponse(TMIversion, γ, L, B, τ2, alg=:centered)
         
-            # Ḡ should be non-negative
-            @test sum(Ḡ .≥ 0) == length(Ḡ)
-
-            # Ḡ should add to something less than unity
-            @test sum(Ḡ) ≤ 1.0    
+                # Ḡ should be non-negative
+                @test sum(Ḡ .≥ 0) == length(Ḡ)
+                # Ḡ should add to something less than unity
+                @test sum(Ḡ) ≤ 1.0
+            end
+            
         end
     end
 
@@ -116,43 +124,62 @@ using ExponentialUtilities
     end
 
     @testset "stepresponse" begin
-        τ = 0:0.1:0.5
+        for i = 1:2
+            if i == 1
+                τ = 0.0:0.1:0.5
+            else
+                τ = 0.1:0.1:0.5
+            end
+            region = "GLOBAL"
+            b = TMI.surfaceregion(TMIversion, region)
+
+            #this should have the same result as globalmean_stepresponse 
+            @time Dnew, τnew = TMItransient.stepresponse_exponential(TMIversion, b, γ, L, B, τ, eval_func = mean) #103s
+            @time Dold, τold = TMItransient.globalmean_stepresponse_exponential(TMIversion, γ, L, B, τ) # CDF
+            @test sum(D̄new .== D̄old) == length(τnew)   
+
+            #get output in Field type 
+            @time Dall, τall = stepresponse(TMIversion, b, γ, L, B, τ) 
+
+            #use synthetic observations to grab some random wet points to observe 
+            #N = 10
+            #locs = [wetlocation(γ) for i in 1:N]
+            Dobs, τobs = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = observe, args = (locs, γ)) 
+
+            # works for all now, 4 Feb 2025
+            for (i, d) in enumerate([Dnew, Dold, Dall, Dobs])
+                try
+                    impulseresponse(d, τobs)
+                catch
+                    println("impulseresponse doesn't work for D̄ number: " * string(i))
+                end   
+            end
+        end
+    end
+
+    @testset "impulse response different time grid" begin
+        τ_simulate = 0.1:0.1:1.0 # times where simulation output saved
+        τ_edges = 0:1.0 # edges of the bins used to compute impulse response
 
         region = "GLOBAL"
         b = TMI.surfaceregion(TMIversion, region)
 
         #this should have the same result as globalmean_stepresponse 
-        @time D̄_new = TMItransient.stepresponse_exponential(TMIversion, b, γ, L, B, τ, eval_func = mean) #103s
-        @time D̄_old = TMItransient.globalmean_stepresponse_exponential(TMIversion, γ, L, B, τ) # CDF
-        @test sum(D̄_new .== D̄_old) == length(τ)   
-
-        #get output in Field type 
-        @time D̄_new_allout = stepresponse(TMIversion, b, γ, L, B, τ[1:2]) #103s
-
-        #use synthetic observations to grab some random wet points to observe 
-        #N = 10
-        #locs = [wetlocation(γ) for i in 1:N]
-        D̄_observed = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = observe, args = (locs, γ)) 
-
-        # works for all now, 4 Feb 2025
-        for (i, d) in enumerate([D̄_new, D̄_old, D̄_new_allout, D̄_observed])
-            try
-                impulseresponse(d, τ, alg = :centered)
-            catch
-                println("impulseresponse doesn't work for D̄ number: " * string(i))
-            end   
-        end
+        @time Dfine, τfine = TMItransient.stepresponse_exponential(TMIversion, b, γ, L, B, τ_simulate, eval_func = mean) #103s
+        @time Gcourse, τcourse = TMItransient.impulseresponse(Dfine, τfine, τ_edges)
     end
 
     @testset "mean age" begin
         #test: is the integral of ĝ equivalent to the output of the `meanage` function? (eqtn 2 of GH 2012) 
-        τ = 0:4000 
-        @time D̄_long = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = observe, args = (locs, γ)) # 90 seconds for 100, 98 seconds for 2000, 106 for 10k 
-        Ḡ_long, τ2 = globalmean_impulseresponse(D̄_long, τ)
+        τsimulate = vcat(0:0.1:10,11:4000)
+        # QNDF: 90 seconds for 100, 98 seconds for 2000, 106 for 10k 
+        # exponential: 167 sec for 4k 
+        @time Dlong, τlong = stepresponse(TMIversion, b, γ, L, B, τsimulate, eval_func = observe, args = (locs, γ)) 
+        Glong, τ2 = impulseresponse(Dlong, τlong, 0:10)
         # uses locs from top-level scope
         ā_obs = observe(meanage(TMIversion, Alu, γ), locs, γ)
         println("Mean age at sites ",ā_obs)
-        ḡ = hcat(Ḡ_long...)
+        ḡ = hcat(Glong...)
         #d̄ = hcat(D̄_long...)
 
         ā = [cumsum(ḡ[i, :] .* τ2)[end] for i in 1:2]

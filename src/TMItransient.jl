@@ -16,12 +16,11 @@ export readopt, ces_ncwrite, varying!,
     setupODE, setupODE_nojac, s_array,
     vintagedistribution, agedistribution,
     EvolvingField,
-    globalmean_rampresponse,
+    #globalmean_rampresponse,
     globalmean_stepresponse,
-    globalmean_stepresponse_exponential, 
-    globalmean_stepresponse_with_restoring,
+    #globalmean_stepresponse_with_restoring,
     globalmean_impulseresponse,
-    stepresponse,  deltaresponse
+    stepresponse,  deltaresponse, impulseresponse
 export datadir, plotsdir, srcdir
 #  read_stepresponse, 
 #  deltaresponse, taudeltaresponse,
@@ -575,7 +574,7 @@ function globalmean_stepresponse_exponential(TMIversion,γ,L,B,τ)
     b = TMI.surfaceregion(TMIversion, region)
     c₀ = B * vec(b)
 
-    return stepresponse_exponential(TMIversion, b, γ, L, B, τ, eval_func = func) #103
+    return stepresponse_exponential(TMIversion, b, γ, L, B, τ, eval_func = func)
     
     # better to grab input type somehow, instead of assuming Float64
     # Dmean = Float64[] # [0.0]; # for time 0
@@ -636,26 +635,26 @@ end
 """
 function stepresponse_exponential(TMIversion, b, γ, L, B, τ; eval_func = return_self, args = ())
 
+    !all(diff(τ) .> 0) && error("τ not monotonically increasing")
+    
     c = zeros(γ)
+    D = [eval_func(c,args...)]
+
+    # apply boundary conditions
     c.tracer[γ.wet] = B*vec(b)
 
-    D = Vector{typeof(eval_func(c,args...))}()
+    τ2 = collect(τ)
+    !iszero(first(τ2)) && pushfirst!(τ2, zero(eltype(τ2)))
     
-    # vfield = cellvolume(γ)
-    # vtmp = vfield.tracer[wet(vfield)]
-    #global v = vtmp./sum(vtmp) # weights for mean
-    for i in eachindex(τ)
-        if i == 1
-            Δt = τ[1]
-        else
-            Δt = τ[i] - τ[i-1]
+    for i in eachindex(τ2)
+        if i > 1
+            Δt = τ2[i] - τ2[i-1]
+            ctmp =  expv(Δt, L, vec(c))
+            c.tracer[γ.wet] = ctmp
+            push!(D, eval_func(c,args...))
         end
-        ctmp =  expv(Δt, L, vec(c))
-        c.tracer[γ.wet] = ctmp
-        #push!(Dmean, sum(c.*v))
-        push!(D, eval_func(c,args...))
     end
-    return D
+    return D, τ2
 
     # f(du,u,p,t) = mul!(du, L, u) #avoid allocation
     # func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array
@@ -731,8 +730,10 @@ end
 
     Does leapfrog satisfy normalization?
 """
-globalmean_impulseresponse(TMIversion, γ, L, B, τ; alg=:centered) =
-    impulseresponse(globalmean_stepresponse(TMIversion, γ, L, B, τ), τ, alg=alg)
+function globalmean_impulseresponse(TMIversion, γ, L, B, τ; alg=:centered)
+    D, τ2 = globalmean_stepresponse(TMIversion, γ, L, B, τ)
+    return impulseresponse(D, τ2, alg = alg)
+end
 
 """
     function impulseresponse
@@ -740,18 +741,33 @@ globalmean_impulseresponse(TMIversion, γ, L, B, τ; alg=:centered) =
     based on a globalmean_stepresponse D̄, compute the impulse response
     can be done via centered or leapfrog difference 
 """
-function impulseresponse(D̄,τ;alg=:centered)
-    if alg == :centered
-        ihi = 2:length(D̄)
-        ilo = 1:(length(D̄)-1)
-    elseif alg == :leapfrog
-        ihi = 3:length(D̄)
-        ilo = 1:(length(D̄)-2)
-    end
+function impulseresponse(D̄,τ)
+    ihi = 2:length(D̄)
+    ilo = 1:(length(D̄)-1)
     Δτ = τ[ihi]-τ[ilo]
     Ḡ = (D̄[ihi] - D̄[ilo])./Δτ
     τ = (τ[ihi] + τ[ilo])./2
     return Ḡ,τ
+end
+# function impulseresponse(D̄,τ;alg=:centered)
+#     if alg == :centered
+#         ihi = 2:length(D̄)
+#         ilo = 1:(length(D̄)-1)
+#     elseif alg == :leapfrog
+#         ihi = 3:length(D̄)
+#         ilo = 1:(length(D̄)-2)
+#     end
+#     Δτ = τ[ihi]-τ[ilo]
+#     Ḡ = (D̄[ihi] - D̄[ilo])./Δτ
+#     τ = (τ[ihi] + τ[ilo])./2
+#     return Ḡ,τ
+# end
+
+function impulseresponse(D_input, τ_input, τ_output)
+    #itp = interpolate(τ_input, D_input, FritschCarlsonMonotonicInterpolation())
+    itp = interpolate(τ_input, D_input)
+    D = itp.(τ_output)
+    return impulseresponse(D,τ_output)
 end
 
 end
