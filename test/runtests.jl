@@ -203,8 +203,8 @@ using ExponentialUtilities
 
             y1 =  zeros(length(locs))
             for  j in  eachindex(y1)
-                Δ  = [D̄_long[i][j]  for  i  in  eachindex(D̄_long)]
-                y1[j] = vintagedistribution(2015,2020,Δ,τ)
+                Δ  = [Dlong[i][j]  for  i  in  eachindex(Dlong)]
+                y1[j] = vintagedistribution(2015,2020,Δ,τsimulate)
             end
             
             @test maximum(y1) ≤ 1.0
@@ -217,12 +217,12 @@ using ExponentialUtilities
             #y1 = TMI.observe(g,locs,γ)
             y2 = observe(g2,locs,γ)
 
-            # relative difference between MATLAB and Julia computations
+            # formerly calculates relative difference between MATLAB and Julia computations
+            # now calculates relative difference direct and indirect computations
             for tt in 1:N
                 @test 100*abs(y1[tt] - y2[tt])/(y1[tt] + y2[tt]) < 1.0 # percent
             end
         end
-
     end
 
         # @testset "monotonicinterpolation" begin
