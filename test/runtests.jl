@@ -29,14 +29,13 @@ using ExponentialUtilities
  
 
         #τ = vcat(0.0:0.1:10,10:2000) # sample Common Era run
-
         # doesn't converge to 1 as well (overshoots)
         # nτ = 10000
         # τmax = 5000
         # τ = exp.(range(0,log(τmax + 1.0), nτ)).-1.0
 
-        # try ExponentialUtilities
         @testset "exponential" begin
+            # try ExponentialUtilities
 
             for i = 1:2
                 if i == 1
@@ -45,10 +44,10 @@ using ExponentialUtilities
                     τ = 0.1:0.1:0.5
                 end
             
-                @time D̄, τ2 = TMItransient.globalmean_stepresponse(TMIversion, γ, L, B, τ) # CDF
+                @time D̄, τ2 = globalmean_stepresponse(TMIversion, γ, L, B, τ) # CDF
                 # should monotonically increase
                 @test sum(diff(D̄) .≥ 0) == length(D̄) - 1
-                Ḡ,tḠ = TMItransient.globalmean_impulseresponse(TMIversion, γ, L, B, τ2, alg=:centered)
+                Ḡ,tḠ = globalmean_impulseresponse(TMIversion, γ, L, B, τ2)
         
                 # Ḡ should be non-negative
                 @test sum(Ḡ .≥ 0) == length(Ḡ)
@@ -128,15 +127,16 @@ using ExponentialUtilities
             if i == 1
                 τ = 0.0:0.1:0.5
             else
+                # don't start at τ = 0
                 τ = 0.1:0.1:0.5
             end
             region = "GLOBAL"
             b = TMI.surfaceregion(TMIversion, region)
 
             #this should have the same result as globalmean_stepresponse 
-            @time Dnew, τnew = TMItransient.stepresponse_exponential(TMIversion, b, γ, L, B, τ, eval_func = mean) #103s
-            @time Dold, τold = TMItransient.globalmean_stepresponse_exponential(TMIversion, γ, L, B, τ) # CDF
-            @test sum(D̄new .== D̄old) == length(τnew)   
+            @time Dnew, τnew = stepresponse(TMIversion, b, γ, L, B, τ, eval_func = mean, alg = :exponential) 
+            @time Dold, τold = globalmean_stepresponse(TMIversion, γ, L, B, τ, alg = :exponential) # CDF
+            @test sum(Dnew .== Dold) == length(τnew)   
 
             #get output in Field type 
             @time Dall, τall = stepresponse(TMIversion, b, γ, L, B, τ) 
@@ -159,14 +159,20 @@ using ExponentialUtilities
 
     @testset "impulse response different time grid" begin
         τ_simulate = 0.1:0.1:1.0 # times where simulation output saved
-        τ_edges = 0:1.0 # edges of the bins used to compute impulse response
+        for i = 1:2
+            if i == 1
+                τ_edges = τ_simulate
+            elseif i == 2
+                τ_edges = 0:0.5:1.0 # edges of the bins used to compute impulse response
+            end
+    
+            region = "GLOBAL"
+            b = TMI.surfaceregion(TMIversion, region)
 
-        region = "GLOBAL"
-        b = TMI.surfaceregion(TMIversion, region)
-
-        #this should have the same result as globalmean_stepresponse 
-        @time Dfine, τfine = TMItransient.stepresponse_exponential(TMIversion, b, γ, L, B, τ_simulate, eval_func = mean) #103s
-        @time Gcourse, τcourse = TMItransient.impulseresponse(Dfine, τfine, τ_edges)
+            #this should have the same result as globalmean_stepresponse 
+            @time Dfine, τfine = stepresponse(TMIversion, b, γ, L, B, τ_simulate, eval_func = mean, alg = :exponential) 
+            @time Gcourse, τcourse = TMItransient.impulseresponse(Dfine, τfine, τ_edges)
+        end
     end
 
     @testset "mean age" begin

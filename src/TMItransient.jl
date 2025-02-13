@@ -730,9 +730,13 @@ end
 
     Does leapfrog satisfy normalization?
 """
-function globalmean_impulseresponse(TMIversion, γ, L, B, τ; alg=:centered)
+# function globalmean_impulseresponse(TMIversion, γ, L, B, τ; alg=:centered)
+#     D, τ2 = globalmean_stepresponse(TMIversion, γ, L, B, τ)
+#     return impulseresponse(D, τ2, alg = alg)
+# end
+function globalmean_impulseresponse(TMIversion, γ, L, B, τ)
     D, τ2 = globalmean_stepresponse(TMIversion, γ, L, B, τ)
-    return impulseresponse(D, τ2, alg = alg)
+    return impulseresponse(D, τ2) #, alg = alg)
 end
 
 """
@@ -764,8 +768,8 @@ end
 # end
 
 function impulseresponse(D_input, τ_input, τ_output)
-    #itp = interpolate(τ_input, D_input, FritschCarlsonMonotonicInterpolation())
-    itp = interpolate(τ_input, D_input)
+    itp = interpolate(τ_input, D_input, FritschCarlsonMonotonicInterpolation())
+    #itp = linear_interpolation(τ_input, D_input)
     D = itp.(τ_output)
     return impulseresponse(D,τ_output)
 end
