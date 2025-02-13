@@ -181,7 +181,7 @@ using ExponentialUtilities
         # QNDF: 90 seconds for 100, 98 seconds for 2000, 106 for 10k 
         # exponential: 167 sec for 4k 
         @time Dlong, τlong = stepresponse(TMIversion, b, γ, L, B, τsimulate, eval_func = observe, args = (locs, γ)) 
-        Glong, τ2 = impulseresponse(Dlong, τlong, 0:10)
+        Glong, τ2 = impulseresponse(Dlong, τlong, 0:4000)
         # uses locs from top-level scope
         ā_obs = observe(meanage(TMIversion, Alu, γ), locs, γ)
         println("Mean age at sites ",ā_obs)

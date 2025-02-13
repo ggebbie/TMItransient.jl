@@ -768,8 +768,9 @@ end
 # end
 
 function impulseresponse(D_input, τ_input, τ_output)
-    itp = interpolate(τ_input, D_input, FritschCarlsonMonotonicInterpolation())
-    #itp = linear_interpolation(τ_input, D_input)
+    # FritschCarlsonMonotonic not currently working with Vectors
+    # itp = interpolate(τ_input, D_input, FritschCarlsonMonotonicInterpolation())
+    itp = linear_interpolation(τ_input, D_input)
     D = itp.(τ_output)
     return impulseresponse(D,τ_output)
 end
