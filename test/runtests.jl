@@ -6,7 +6,6 @@ using ExponentialUtilities
 
 @testset "TMItransient.jl" begin
     # Write your tests here.
-    
     TMIversion = "modern_90x45x33_GH10_GH12"
     #TMIversion = "modern_180x90x33_GH10_GH12"
     #TMIversion = "modern_90x45x33_unpub12"
@@ -26,7 +25,6 @@ using ExponentialUtilities
 
         # choose water mass (i.e., surface patch) of interest
         region = list[1]
- 
 
         #τ = vcat(0.0:0.1:10,10:2000) # sample Common Era run
         # doesn't converge to 1 as well (overshoots)
@@ -119,8 +117,6 @@ using ExponentialUtilities
         #     println("percent difference is ",ϵ)
         #     @test ϵ < 1.0 # percent
         # end
-        
-    end
 
     @testset "stepresponse" begin
         for i = 1:2
@@ -178,6 +174,10 @@ using ExponentialUtilities
     @testset "mean age" begin
         #test: is the integral of ĝ equivalent to the output of the `meanage` function? (eqtn 2 of GH 2012) 
         τsimulate = vcat(0:0.1:10,11:4000)
+
+        region = "GLOBAL"
+        b = TMI.surfaceregion(TMIversion, region)
+        
         # QNDF: 90 seconds for 100, 98 seconds for 2000, 106 for 10k 
         # exponential: 167 sec for 4k 
         @time Dlong, τlong = stepresponse(TMIversion, b, γ, L, B, τsimulate, eval_func = observe, args = (locs, γ)) 
@@ -202,7 +202,7 @@ using ExponentialUtilities
             using Interpolations
 
             y1 =  zeros(length(locs))
-            for  j in  eachindex(y1)
+            for j in  eachindex(y1)
                 Δ  = [Dlong[i][j]  for  i  in  eachindex(Dlong)]
                 y1[j] = vintagedistribution(2015,2020,Δ,τsimulate)
             end
@@ -210,7 +210,7 @@ using ExponentialUtilities
             @test maximum(y1) ≤ 1.0
             #@test minimum(g) ≥ 0.0 # fails for MATLAB
 
-            g2 = vintagedistribution(TMIversion,γ,L,B,2015,2020)
+            g2 = vintagedistribution(TMIversion, γ, L, B, 2015, 2020)
             @test maximum(g2) ≤ 1.0
             #@test minimum(g) ≥ 0.0 # fails for Julia
 

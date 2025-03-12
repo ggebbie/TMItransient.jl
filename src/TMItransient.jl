@@ -272,11 +272,15 @@ goodtime = x -> (typeof(x) <: Number && !isnan(x))
 # Warning
 - should be a way to make Δ argument more general (more types)
 """
-function vintagedistribution(t₀,tf,Δ,τ;tmodern=2025, interp="linear")
+function vintagedistribution(t₀, tf, Δ, τ; tmodern=2025, interp="linear")
 
     τ₀ = tmodern - t₀ # transfer starting cal year to equivalent lag
     τf = tmodern - tf # end year
 
+    println(size(Δ))
+    println(typeof(Δ))
+
+    
     # get interpolation object
     if interp == "linear"
         itp = linear_interpolation(τ, Δ)
@@ -291,6 +295,10 @@ function vintagedistribution(t₀,tf,Δ,τ;tmodern=2025, interp="linear")
         return g = ones(Δ[1].γ) - itp(τf)
     else
         #return g = interp_linear(τ₀) - interp_linear(τf)
+        println("mean last delta ", mean(last(Δ)))
+        println("mean first delta ", mean(first(Δ)))
+        
+        println("end ", mean(itp(τf)))
         println("begin ", mean(itp(τ₀)))
         println("end ", mean(itp(τf)))
         println("begin ", τ₀)
@@ -301,7 +309,7 @@ function vintagedistribution(t₀,tf,Δ,τ;tmodern=2025, interp="linear")
 end
 
 # default to vintages defined by GLOBAL sea surface
-function vintagedistribution(TMIversion,γ::TMI.Grid,L,B,t₀,tf;
+function vintagedistribution(TMIversion, γ::TMI.Grid, L, B, t₀, tf;
     tmodern= 2025, region = "GLOBAL")
 
     τ₀ = tmodern - t₀ # transfer starting cal year to equivalent lag
@@ -313,23 +321,26 @@ function vintagedistribution(TMIversion,γ::TMI.Grid,L,B,t₀,tf;
     # exponential ODE solver, so give default timestepping with good time grid.
     # needs to start at zero with small time step
     # insert t₀ in order
-    τsimulate = vcat(0:0.1:10,11:10000)
+    #τsimulate = vcat(0:0.1:10,11:10000)
+    τsimulate = vcat(0:0.1:10,11:ceil(τ₀))
 
     # # where is t0 for future reference
     # i0 = first( findall( x -> x == τ₀, τsimulate))
     
     # remove times larger than τf + 1
-    while last(τsimulate) > τ₀ + 1
-        pop!(τsimulate)
-    end
+    # while last(τsimulate) > τ₀ + 1
+    #     pop!(τsimulate)
+    # end
     # # put τf at the end
     # push!(τsimulate, tf)
     
     # this code is explicitly made for exponential solver
     println("tau simulate ",τsimulate)
     Δ, τ = stepresponse_exponential(TMIversion, b, γ, L, B, τsimulate)
+        println("mean last delta 1 ", mean(last(Δ)))
+        println("mean first delta 1 ", mean(first(Δ)))
 
-    return vintagedistribution(t₀,tf,Δ,τ, tmodern = tmodern)
+    return vintagedistribution(t₀, tf, Δ, τ, tmodern = tmodern)
 
     # println("young edge of vintage, τ= ",τsimulate[i0])
     # println("old edge of vintage, τ= ",τsimulate[end])
@@ -618,7 +629,7 @@ function globalmean_stepresponse_exponential(TMIversion,γ,L,B,τ)
     region = "GLOBAL"
     func = mean 
     b = TMI.surfaceregion(TMIversion, region)
-    #c₀ = B * vec(b)
+    #c₀ = B * vec(b) 
 
     return stepresponse_exponential(TMIversion, b, γ, L, B, τ, eval_func = func)
     
@@ -696,33 +707,14 @@ function stepresponse_exponential(TMIversion, b, γ, L, B, τ; eval_func = retur
         if i > 1
             Δt = τ2[i] - τ2[i-1]
             ctmp =  expv(Δt, L, vec(c))
-            println(" max tracer ",maximum(ctmp))
-            println(" mean tracer ",mean(ctmp))
+            #println(" max tracer ",maximum(ctmp))
+            #println(" mean tracer ",mean(ctmp))
             c.tracer[γ.wet] = ctmp
             push!(D, eval_func(c,args...))
         end
     end
     return D, τ2
 
-    # f(du,u,p,t) = mul!(du, L, u) #avoid allocation
-    # func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array
-    # tspan = (first(τ), last(τ))
-    # prob = ODEProblem(func, c₀, tspan) #Field type
-
-    # # possible algs:
-    # # QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
-    # integrator = init(prob,QNDF())
-    
-    # #assumes `f` returns one output!
-    # #how should I handle the fact that there can be no args
-    # output = isempty(args) ? Vector{first(Base.return_types(eval_func, (Field{Float64},)))}(undef, length(τ)) : Vector{first(Base.return_types(eval_func, (Field{Float64}, typeof.(args)...,)))}(undef, length(τ))
-    
-    # solfld = zeros(γ) #initialize solution Field 
-    
-    # for (idx, (u, t)) in enumerate(TimeChoiceIterator(integrator, τ))
-    #     solfld.tracer[wet(solfld)] = u
-    #     output[idx] = isempty(args) ? eval_func(solfld) : eval_func(solfld, args...)
-    # end
     # return output
 end
 
