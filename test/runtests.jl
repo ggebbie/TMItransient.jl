@@ -5,7 +5,6 @@ using Statistics
 using ExponentialUtilities
 
 @testset "TMItransient.jl" begin
-    # Write your tests here.
     TMIversion = "modern_90x45x33_GH10_GH12"
     #TMIversion = "modern_180x90x33_GH10_GH12"
     #TMIversion = "modern_90x45x33_unpub12"
@@ -35,6 +34,22 @@ using ExponentialUtilities
         @testset "exponential" begin
             # try ExponentialUtilities
 
+            Lmix = mixedlayermatrix(A, γ, 0.4)
+            Ldir = dirichletmatrix(γ, 0.5)
+
+            Ltot = L + Lmix + Ldir
+            ci = ones(size(Ltot,1)) # initial conditions
+
+            # 1 step
+            cout1 = expv(1.0, Ltot, ci)
+
+            # 10 steps
+            global cout10 = ci
+            for i in 1:1000
+                global cout10 = expv(1, Ltot, cout10) 
+            end
+            
+            
             for i = 1:2
                 if i == 1
                     τ = 0.0:0.1:0.5

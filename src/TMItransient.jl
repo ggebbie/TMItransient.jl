@@ -625,31 +625,11 @@ use ExponentialUtilities.jl
  Instead of computing the matrix function first and then computing the matrix-vector product, the common alternative is to construct a Krylov subspaceK_m(A,b) and then approximate the matrix-phi-vector product.
 """
 function globalmean_stepresponse_exponential(TMIversion,γ,L,B,τ)
-
     region = "GLOBAL"
     func = mean 
     b = TMI.surfaceregion(TMIversion, region)
     #c₀ = B * vec(b) 
-
     return stepresponse_exponential(TMIversion, b, γ, L, B, τ, eval_func = func)
-    
-    # better to grab input type somehow, instead of assuming Float64
-    # Dmean = Float64[] # [0.0]; # for time 0
-    
-    # c = c₀ # zeros(γ)
-    # vfield = cellvolume(γ)
-    # vtmp = vfield.tracer[wet(vfield)]
-    # global v = vtmp./sum(vtmp) # weights for mean
-    # for i in eachindex(τ)
-    #     if i == 1
-    #         Δt = τ[1]
-    #     else
-    #         Δt = τ[i] - τ[i-1]
-    #     end
-    #     c =  expv(Δt, L, c)
-    #     push!(Dmean, sum(c.*v))
-    # end
-    # return Dmean
 end
 function globalmean_stepresponse_exponential_old(TMIversion,region,γ,L,B,τ)
 
@@ -714,8 +694,6 @@ function stepresponse_exponential(TMIversion, b, γ, L, B, τ; eval_func = retur
         end
     end
     return D, τ2
-
-    # return output
 end
 
 """
