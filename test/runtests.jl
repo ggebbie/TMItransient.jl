@@ -14,22 +14,26 @@ using LinearAlgebra
 
         @testset "global mean high level functions" begin
             # top-level, most abstracted algorithm
-
-            # IMPLEMENT THIS NEXT
-            #globalmean_impulseresponse(TMIversion) # takes 150 s
             
             # make some of your own choices with keywords
-            τs = 0:1
+            # or ignore these optional parameters and
+            # trust the developers
+            τi = 0:5
+            τs = 0:0.1:5
             τd = 0.1
             τm = 0.2
-            globalmean_stepresponse(TMIversion,
+            D, τD = globalmean_stepresponse(TMIversion,
                 τ=τs,
                 τdirichlet=τd,
                 τmixedlayer=τm,
                 alg=:exponential)
 
-
-            
+            G, τg = globalmean_impulseresponse(TMIversion,
+                τimpulse=τi,
+                τsimulate=τs,
+                τdirichlet=τd,
+                τmixedlayer=τm,
+                alg=:exponential)
         end
 
         @testset "global mean basics" begin
@@ -59,10 +63,10 @@ using LinearAlgebra
             @test sum(diff(D̄3) .≥ 0) == length(D̄3) - 1
 
             # somewhat stable with different discretization?
-            @test abs((last(D̄1) - last(D̄3)) / (last(D̄1) + last(D̄3))) < 0.2
-            
-            Ḡ,tḠ = globalmean_impulseresponse(
-                Ltot, τ3, γ, alg = :exponential)
+            @test abs((last(D̄1) - last(D̄3)) / (last(D̄1) + last(D̄3))) < 0.2 # 20% difference at early stages
+
+            @time G, τG = globalmean_impulseresponse(
+                Ltot, τi, τs, γ, alg = :exponential)
         
             # Ḡ should be non-negative
             @test sum(Ḡ .≥ 0) == length(Ḡ)

@@ -717,6 +717,15 @@ function globalmean_stepresponse(L, τ, γ; alg=:exponential)
     end
 end
 
+function globalmean_impulseresponse(L, τimpulse, τsimulate, γ; alg=:exponential)
+    if alg == :exponential
+        D, τd =  globalmean_stepresponse_exponential(L, τsimulate, γ)
+        return impulseresponse(D, τd, τimpulse) 
+    else
+        error("not implemented")
+    end
+end
+
 # top-level algorithm
 function globalmean_stepresponse(TMIversion::String;
     τ=vcat(0:0.01:1.0,1.01:0.1:10,11:4000),
@@ -737,32 +746,27 @@ function globalmean_stepresponse(TMIversion::String;
     end
 end
 
-# # top-level algorithm with defaults
-# globalmean_stepresponse(TMIversion::String) =
-#     globalmean_stepresponse(TMIversion,
-#         vcat(0:0.01:1.0,1.01:0.1:10,11:4000),
-#         0.05,
-#         0.1,
-#         alg=:exponential)
-
-#globalmean_impulseresponse(TMIversion,region,γ,L,B,τ) = (diff(globalmean_stepresponse(TMIversion,region,γ,L,B,τ)),(τ[1:end-1]+τ[2:end])./2)
 """
     function globalmean_impulseresponse
 
     Ḡ: satisfied ∫₀^∞ Ḡ(τ) dτ = 1
 
-    `alg`: centered or leapfrog
-
     Does leapfrog satisfy normalization?
 """
-# function globalmean_impulseresponse(TMIversion, γ, L, B, τ; alg=:centered)
-#     D, τ2 = globalmean_stepresponse(TMIversion, γ, L, B, τ)
-#     return impulseresponse(D, τ2, alg = alg)
-# end
-function globalmean_impulseresponse(L, τ, γ; alg = :exponential)
-#    D, τ2 = globalmean_stepresponse(TMIversion, γ, L, B, τ)
-    D, τ2 = globalmean_stepresponse(L, τ, γ; alg=alg)
-    return impulseresponse(D, τ2) #, alg = alg)
+function globalmean_impulseresponse(TMIversion::String;
+    τimpulse=0:4000,
+    τsimulate=vcat(0:0.01:1.0,1.01:0.1:10,11:4000),
+    τdirichlet=0.05,
+    τmixedlayer=0.1,
+    alg=:exponential)
+
+    D, τ2 = globalmean_stepresponse(TMIversion,
+                τ=τsimulate,
+                τdirichlet=τdirichlet,
+                τmixedlayer=τmixedlayer,
+                alg=alg)
+
+    return impulseresponse(D, τ2, τimpulse)
 end
 
 """
@@ -829,8 +833,7 @@ function observe_stepresponse(L, τ, locs, γ; alg=:exponential)
     end
 end
 
-
-end
+end # module
 
 # function global_stepresponse_exponential(L, τ; eval_func = return_self, args = ())
   
