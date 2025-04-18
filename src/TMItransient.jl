@@ -460,6 +460,17 @@ end
 
 return_self(x) = x 
 
+# belongs in TMI
+function volumeweighted_mean(c::Vector, γ::TMI.Grid)
+    v = volumeweights(γ)
+    return sum(c.*v)
+end
+function volumeweights(γ::TMI.Grid)
+    vfield = TMI.cellvolume(γ)
+    vtmp = vfield.tracer[wet(vfield)]
+    return vtmp./sum(vtmp) # weights for mean
+end
+
 function constant_forcing!(du,u,p)
     # parameter 1: circulation matrix
     # parameter 2: 3d forcing
@@ -670,73 +681,69 @@ end
     - τ: evenly spaced vector
     - f: some function f(u) where u is a vector of all wet points 
 """
-function stepresponse_exponential(TMIversion, b, γ, L, B, τ; eval_func = return_self, args = ())
-
+function stepresponse_exponential(L, τ; eval_func = return_self, args = ())
+  
     !all(diff(τ) .> 0) && error("τ not monotonically increasing")
     
-    c = zeros(γ)
-    D = [eval_func(c,args...)]
-
-    # apply boundary conditions
-    c.tracer[γ.wet] = B*vec(b)
-
     τ2 = collect(τ)
     !iszero(first(τ2)) && pushfirst!(τ2, zero(eltype(τ2)))
+
+    # initialize dye
+    c = ones(size(L,1)) # initial conditions
+    D = [1.0 .- eval_func(c,args...)]
     
     for i in eachindex(τ2)
         if i > 1
             Δt = τ2[i] - τ2[i-1]
-            ctmp =  expv(Δt, L, vec(c))
+            c =  expv(Δt, L, c)
             #println(" max tracer ",maximum(ctmp))
             #println(" mean tracer ",mean(ctmp))
-            c.tracer[γ.wet] = ctmp
-            push!(D, eval_func(c,args...))
+            push!(D, 1.0 .- eval_func(c,args...))
         end
     end
     return D, τ2
 end
 
-"""
-    function globalmean_stepresponse_qndf
-
-calculate the global mean response to "turning on" some region
-"""
-function globalmean_stepresponse_qndf(TMIversion,region,γ,L,B,τ)
-
-    # assume evenly spaced (uniform) time spacing
-    # Δτ = diff(τ)[1]
-    b = TMI.surfaceregion(TMIversion,region)
-    c₀ = zeros(γ) # preallocate initial condition Field
-    c₀ = B* vec(b)
-    f(du,u,p,t) = mul!(du, L, u) #avoid allocation
-    func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array
-    # make sure it starts at t=0 even if not saved there
-    tspan = (0*first(τ),last(τ))
-    prob = ODEProblem(func, c₀, tspan) # Field type
-
-    # possible algs:
-    # QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
-    #integrator = init(prob,QNDF())
-    integrator = init(prob,QNDF1())
-    #integrator = init(prob,SSPSDIRK2())
-
-    # better to grab input type somehow, instead of assuming Float64
-    Dmean = Float64[] # [0.0]; # for time 0
-
-    solfld = zeros(γ)
-    for (u,t) in TimeChoiceIterator(integrator,τ)
-        solfld.tracer[wet(solfld)] = u
-        push!(Dmean,mean(solfld))
-    end
-
-    # Philosophy: would prefer to not mess with output.
-    #set first element to zero if lag is zero
-    #if iszero(τ[1])
-    #    Dmean[1] = 0.0
-    #end
-    
-    return Dmean
+function globalmean_stepresponse_exponential(L, τ, γ)
+    w = TMItransient.volumeweights(γ)
+    return stepresponse_exponential(L, τ; eval_func = dot, args = (Ref(w)))
 end
+
+function globalmean_stepresponse(L, τ, γ; alg=:exponential)
+    if alg == :exponential
+        return globalmean_stepresponse_exponential(L, τ, γ)
+    else
+        error("not implemented")
+    end
+end
+
+# top-level algorithm
+function globalmean_stepresponse(TMIversion::String;
+    τ=vcat(0:0.01:1.0,1.01:0.1:10,11:4000),
+    τdirichlet=0.05,
+    τmixedlayer=0.1,
+    alg=:exponential)
+
+    A, Alu, γ, TMIfile, L, B = config(TMIversion, compute_lu = false);
+    
+    Lmix = mixedlayermatrix(A, γ, τmixedlayer)
+    Ldir = dirichletmatrix(γ, τdirichlet)
+    Ltot = L + Lmix + Ldir
+
+    if alg == :exponential
+        return globalmean_stepresponse_exponential(Ltot, τ, γ)
+    else
+        error("not implemented")
+    end
+end
+
+# # top-level algorithm with defaults
+# globalmean_stepresponse(TMIversion::String) =
+#     globalmean_stepresponse(TMIversion,
+#         vcat(0:0.01:1.0,1.01:0.1:10,11:4000),
+#         0.05,
+#         0.1,
+#         alg=:exponential)
 
 #globalmean_impulseresponse(TMIversion,region,γ,L,B,τ) = (diff(globalmean_stepresponse(TMIversion,region,γ,L,B,τ)),(τ[1:end-1]+τ[2:end])./2)
 """
@@ -752,8 +759,9 @@ end
 #     D, τ2 = globalmean_stepresponse(TMIversion, γ, L, B, τ)
 #     return impulseresponse(D, τ2, alg = alg)
 # end
-function globalmean_impulseresponse(TMIversion, γ, L, B, τ)
-    D, τ2 = globalmean_stepresponse(TMIversion, γ, L, B, τ)
+function globalmean_impulseresponse(L, τ, γ; alg = :exponential)
+#    D, τ2 = globalmean_stepresponse(TMIversion, γ, L, B, τ)
+    D, τ2 = globalmean_stepresponse(L, τ, γ; alg=alg)
     return impulseresponse(D, τ2) #, alg = alg)
 end
 
@@ -793,4 +801,102 @@ function impulseresponse(D_input, τ_input, τ_output)
     return impulseresponse(D,τ_output)
 end
 
+#function observe_stepresponse_exponential(L::T{Tf,Ti}, τ, locs, γ) where T where Tf where Ti
+function observe_stepresponse_exponential(L, τ, locs, γ)
+    nfield = size(L, 1)
+    nobs = length(locs)
+    w = Vector(undef,nobs)
+    #w = Vector{SparseVector{Tf,Ti}}(undef,nobs)
+    for i in eachindex(locs)
+      w[i] = interpweights(locs[i], γ)[γ.wet]
+    end
+    return stepresponse_exponential(L, τ; eval_func = observe_fast, args = (Ref(w)))
 end
+
+function observe_fast(c::Vector, w::Vector)
+    y = Vector{eltype(c)}(undef, length(w))
+    for i in eachindex(w)
+        y[i] = dot(c,w[i])
+    end
+    return y
+end
+
+function observe_stepresponse(L, τ, locs, γ; alg=:exponential)
+    if alg == :exponential
+        return observe_stepresponse_exponential(L, τ, locs, γ)
+    else
+        error("not implemented")
+    end
+end
+
+
+end
+
+# function global_stepresponse_exponential(L, τ; eval_func = return_self, args = ())
+  
+#     !all(diff(τ) .> 0) && error("τ not monotonically increasing")
+    
+#     c = zeros(γ)
+#     D = [eval_func(c,args...)]
+
+#     # apply boundary conditions
+#     c.tracer[γ.wet] = B*vec(b)
+
+#     τ2 = collect(τ)
+#     !iszero(first(τ2)) && pushfirst!(τ2, zero(eltype(τ2)))
+    
+#     for i in eachindex(τ2)
+#         if i > 1
+#             Δt = τ2[i] - τ2[i-1]
+#             ctmp =  expv(Δt, L, vec(c))
+#             #println(" max tracer ",maximum(ctmp))
+#             #println(" mean tracer ",mean(ctmp))
+#             c.tracer[γ.wet] = ctmp
+#             push!(D, eval_func(c,args...))
+#         end
+#     end
+#     return D, τ2
+# end
+
+
+# """
+#     function globalmean_stepresponse_qndf
+
+# calculate the global mean response to "turning on" some region
+# """
+# function globalmean_stepresponse_qndf(TMIversion,region,γ,L,B,τ)
+
+#     # assume evenly spaced (uniform) time spacing
+#     # Δτ = diff(τ)[1]
+#     b = TMI.surfaceregion(TMIversion,region)
+#     c₀ = zeros(γ) # preallocate initial condition Field
+#     c₀ = B* vec(b)
+#     f(du,u,p,t) = mul!(du, L, u) #avoid allocation
+#     func = ODEFunction(f, jac_prototype = L) #jac_prototype for sparse array
+#     # make sure it starts at t=0 even if not saved there
+#     tspan = (0*first(τ),last(τ))
+#     prob = ODEProblem(func, c₀, tspan) # Field type
+
+#     # possible algs:
+#     # QNDF, TRBDF2, FBDF, CVODE_BDF, lsoda, ImplicitEuler
+#     #integrator = init(prob,QNDF())
+#     integrator = init(prob,QNDF1())
+#     #integrator = init(prob,SSPSDIRK2())
+
+#     # better to grab input type somehow, instead of assuming Float64
+#     Dmean = Float64[] # [0.0]; # for time 0
+
+#     solfld = zeros(γ)
+#     for (u,t) in TimeChoiceIterator(integrator,τ)
+#         solfld.tracer[wet(solfld)] = u
+#         push!(Dmean,mean(solfld))
+#     end
+
+#     # Philosophy: would prefer to not mess with output.
+#     #set first element to zero if lag is zero
+#     #if iszero(τ[1])
+#     #    Dmean[1] = 0.0
+#     #end
+    
+#     return Dmean
+# end

@@ -1,73 +1,146 @@
 using Revise
 using TMItransient, TMI 
 using Test
-using Statistics
+#using Statistics
 using ExponentialUtilities
+using LinearAlgebra
 
 @testset "TMItransient.jl" begin
     TMIversion = "modern_90x45x33_GH10_GH12"
-    #TMIversion = "modern_180x90x33_GH10_GH12"
     #TMIversion = "modern_90x45x33_unpub12"
+
+    @testset "exponential" begin
+        # use ExponentialUtilities
+
+        @testset "global mean high level functions" begin
+            # top-level, most abstracted algorithm
+
+            # IMPLEMENT THIS NEXT
+            #globalmean_impulseresponse(TMIversion) # takes 150 s
+            
+            # make some of your own choices with keywords
+            τs = 0:1
+            τd = 0.1
+            τm = 0.2
+            globalmean_stepresponse(TMIversion,
+                τ=τs,
+                τdirichlet=τd,
+                τmixedlayer=τm,
+                alg=:exponential)
+
+
+            
+        end
+
+        @testset "global mean basics" begin
     
-    A, Alu, γ, TMIfile, L, B = config(TMIversion);
-
-    # compare g, g2 at N random points
-    N = 2
-    # get random locations that are wet (ocean)
-    locs = [wetlocation(γ) for i in 1:N]
-
-    @testset "watermass_stepresponse" begin
-        using LinearAlgebra
-
-        # read a water-mass surface patch from these choices
-        list = TMI.regionlist()
-
-        # choose water mass (i.e., surface patch) of interest
-        region = list[1]
-
-        #τ = vcat(0.0:0.1:10,10:2000) # sample Common Era run
-        # doesn't converge to 1 as well (overshoots)
-        # nτ = 10000
-        # τmax = 5000
-        # τ = exp.(range(0,log(τmax + 1.0), nτ)).-1.0
-
-        @testset "exponential" begin
-            # try ExponentialUtilities
-
-            Lmix = mixedlayermatrix(A, γ, 0.4)
-            Ldir = dirichletmatrix(γ, 0.5)
-
+            A, Alu, γ, TMIfile, L, B = config(TMIversion);
+            Lmix = mixedlayermatrix(A, γ, 0.05)
+            Ldir = dirichletmatrix(γ, 0.1)
             Ltot = L + Lmix + Ldir
-            ci = ones(size(Ltot,1)) # initial conditions
 
-            # 1 step
-            cout1 = expv(1.0, Ltot, ci)
+            tf = 1
+            τ1 = 0.0:0.01:tf
+            τ2 = 0.1:0.01:tf
+            τ3 = 0:0.1:tf
+              
+            @time D̄1, τ1out = globalmean_stepresponse(
+                Ltot, τ1, γ, alg = :exponential)
 
-            # 10 steps
-            global cout10 = ci
-            for i in 1:1000
-                global cout10 = expv(1, Ltot, cout10) 
-            end
+            @time D̄2, τ2out = globalmean_stepresponse(
+                Ltot, τ2, γ, alg = :exponential)
+
+            @time D̄3, τ3out = globalmean_stepresponse(
+                Ltot, τ3, γ, alg = :exponential)
+
+            # should monotonically increase
+            @test sum(diff(D̄1) .≥ 0) == length(D̄1) - 1
+            @test sum(diff(D̄2) .≥ 0) == length(D̄2) - 1
+            @test sum(diff(D̄3) .≥ 0) == length(D̄3) - 1
+
+            # somewhat stable with different discretization?
+            @test abs((last(D̄1) - last(D̄3)) / (last(D̄1) + last(D̄3))) < 0.2
             
+            Ḡ,tḠ = globalmean_impulseresponse(
+                Ltot, τ3, γ, alg = :exponential)
+        
+            # Ḡ should be non-negative
+            @test sum(Ḡ .≥ 0) == length(Ḡ)
+            # Ḡ should add to something less than unity
+            @test sum(Ḡ) ≤ 1.0
+        end
             
-            for i = 1:2
-                if i == 1
-                    τ = 0.0:0.1:0.5
-                else
-                    τ = 0.1:0.1:0.5
+        @testset "mean age" begin
+
+            # compare g, g2 at N random points
+            N = 2
+            # get random locations that are wet (ocean)
+            locs = [wetlocation(γ) for i in 1:N]
+
+            #test: is the integral of ĝ equivalent to the output of the `meanage` function? (eqtn 2 of GH 2012) 
+            τsimulate = vcat(0:0.01:1.0,1.01:0.1:10,11:4000)
+            @time Dlong, τlong = TMItransient.observe_stepresponse(
+                Ltot, τsimulate, locs, γ, alg = :exponential)
+
+            Glong, τGlong = impulseresponse(Dlong, τlong)        
+            Glong2, τGlong2 = impulseresponse(Dlong, τlong, 0:4000)
+
+            # # QNDF: 90 seconds for 100, 98 seconds for 2000, 106 for 10k 
+            # # exponential: 167 sec for 4k
+        
+            # uses locs from top-level scope
+            a_obs = observe(meanage(TMIversion, Alu, γ), locs, γ)
+            println("Mean age at sites ",a_obs)
+            g = hcat(Glong2...)
+            #d̄ = hcat(D̄_long...)
+
+            a = [cumsum(g[i, :] .* τGlong2)[end] for i in 1:2]
+            acorrection = [(1 - sum(g[i,:])) * τGlong2[end] for i in 1:2]
+        
+            atol = 10
+            denom = abs.(a + acorrection + a_obs)./2
+            replace!(x -> x< atol ? atol : x, denom)
+            relative_error = 100*abs.(a + acorrection - a_obs)./denom
+            @test all(relative_error .< 2) # relative error less than 1 percent?
+
+            @testset "vintage test" begin
+
+                using Interpolations
+
+                y1 =  zeros(length(locs))
+                for j in  eachindex(y1)
+                    Δ  = [Dlong[i][j]  for  i  in  eachindex(Dlong)]
+                    y1[j] = vintagedistribution(2015,2020,Δ,τsimulate)
                 end
             
-                @time D̄, τ2 = globalmean_stepresponse(TMIversion, γ, L, B, τ) # CDF
-                # should monotonically increase
-                @test sum(diff(D̄) .≥ 0) == length(D̄) - 1
-                Ḡ,tḠ = globalmean_impulseresponse(TMIversion, γ, L, B, τ2)
-        
-                # Ḡ should be non-negative
-                @test sum(Ḡ .≥ 0) == length(Ḡ)
-                # Ḡ should add to something less than unity
-                @test sum(Ḡ) ≤ 1.0
+                @test maximum(y1) ≤ 1.0
+                #@test minimum(g) ≥ 0.0 # fails for MATLAB
+
+                g2 = vintagedistribution(TMIversion, γ, L, B, 2015, 2020)
+                @test maximum(g2) ≤ 1.0
+                #@test minimum(g) ≥ 0.0 # fails for Julia
+
+                #y1 = TMI.observe(g,locs,γ)
+                y2 = observe(g2,locs,γ)
+
+                # formerly calculates relative difference between MATLAB and Julia computations
+                # now calculates relative difference direct and indirect computations
+                for tt in 1:N
+                    @test 100*abs(y1[tt] - y2[tt])/(y1[tt] + y2[tt]) < 1.0 # percent
+                end
             end
-            
+        end
+
+        @testset "watermass_stepresponse" begin
+
+            @testset "water masses + regions" begin
+                
+                # read a water-mass surface patch from these choices
+                list = TMI.regionlist()
+
+                # choose water mass (i.e., surface patch) of interest
+                region = list[1]
+            end
         end
     end
 
@@ -186,59 +259,6 @@ using ExponentialUtilities
         end
     end
 
-    @testset "mean age" begin
-        #test: is the integral of ĝ equivalent to the output of the `meanage` function? (eqtn 2 of GH 2012) 
-        τsimulate = vcat(0:0.1:10,11:4000)
-
-        region = "GLOBAL"
-        b = TMI.surfaceregion(TMIversion, region)
-        
-        # QNDF: 90 seconds for 100, 98 seconds for 2000, 106 for 10k 
-        # exponential: 167 sec for 4k 
-        @time Dlong, τlong = stepresponse(TMIversion, b, γ, L, B, τsimulate, eval_func = observe, args = (locs, γ)) 
-        Glong, τ2 = impulseresponse(Dlong, τlong, 0:4000)
-        # uses locs from top-level scope
-        ā_obs = observe(meanage(TMIversion, Alu, γ), locs, γ)
-        println("Mean age at sites ",ā_obs)
-        ḡ = hcat(Glong...)
-        #d̄ = hcat(D̄_long...)
-
-        ā = [cumsum(ḡ[i, :] .* τ2)[end] for i in 1:2]
-        #@test isapprox([cumsum(ḡ[i, :] .* τ)[end] for i in 1:10], meanage_obs, atol = 50)
-
-        atol = 10
-        denom = abs.(ā + ā_obs)./2
-        replace!(x -> x< atol ? atol : x, denom)
-        relative_error = 100*abs.(ā - ā_obs)./denom
-        @test all(relative_error .< 10) # relative error less than 10 percent?
-
-        @testset "vintage test" begin
-
-            using Interpolations
-
-            y1 =  zeros(length(locs))
-            for j in  eachindex(y1)
-                Δ  = [Dlong[i][j]  for  i  in  eachindex(Dlong)]
-                y1[j] = vintagedistribution(2015,2020,Δ,τsimulate)
-            end
-            
-            @test maximum(y1) ≤ 1.0
-            #@test minimum(g) ≥ 0.0 # fails for MATLAB
-
-            g2 = vintagedistribution(TMIversion, γ, L, B, 2015, 2020)
-            @test maximum(g2) ≤ 1.0
-            #@test minimum(g) ≥ 0.0 # fails for Julia
-
-            #y1 = TMI.observe(g,locs,γ)
-            y2 = observe(g2,locs,γ)
-
-            # formerly calculates relative difference between MATLAB and Julia computations
-            # now calculates relative difference direct and indirect computations
-            for tt in 1:N
-                @test 100*abs(y1[tt] - y2[tt])/(y1[tt] + y2[tt]) < 1.0 # percent
-            end
-        end
-    end
 
         # @testset "monotonicinterpolation" begin
     #     using Interpolations
