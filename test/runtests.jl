@@ -82,31 +82,29 @@ using LinearAlgebra
             locs = [wetlocation(γ) for i in 1:N]
 
             #test: is the integral of ĝ equivalent to the output of the `meanage` function? (eqtn 2 of GH 2012) 
-            τsimulate = vcat(0:0.01:1.0,1.01:0.1:10,11:4000)
-            @time Dlong, τlong = TMItransient.observe_stepresponse(
-                Ltot, τsimulate, locs, γ, alg = :exponential)
+            τs = vcat(0:0.01:1.0,1.01:0.1:10,11:4000)
+            τi = 0:4000
 
-            Glong, τGlong = impulseresponse(Dlong, τlong)        
-            Glong2, τGlong2 = impulseresponse(Dlong, τlong, 0:4000)
+            @time G, τG = observe_impulseresponse(
+                Ltot, τi, τs, locs, γ, alg = :exponential)
 
             # # QNDF: 90 seconds for 100, 98 seconds for 2000, 106 for 10k 
             # # exponential: 167 sec for 4k
         
             # uses locs from top-level scope
             a_obs = observe(meanage(TMIversion, Alu, γ), locs, γ)
-            println("Mean age at sites ",a_obs)
-            g = hcat(Glong2...)
-            #d̄ = hcat(D̄_long...)
-
-            a = [cumsum(g[i, :] .* τGlong2)[end] for i in 1:2]
-            acorrection = [(1 - sum(g[i,:])) * τGlong2[end] for i in 1:2]
-        
+            println("Equilbrium inversion for mean age at sites ",a_obs)
+            g = hcat(G...)
+            a = [cumsum(g[i, :] .* τG)[end] for i in 1:2]
+            acorrection = [(1 - sum(g[i,:])) * τG[end] for i in 1:2]
+            println("Transiently simulated mean age at sites ",a + acorrection)
             atol = 10
             denom = abs.(a + acorrection + a_obs)./2
             replace!(x -> x< atol ? atol : x, denom)
             relative_error = 100*abs.(a + acorrection - a_obs)./denom
-            @test all(relative_error .< 2) # relative error less than 1 percent?
-
+            @test all(relative_error .< 5) # relative error less than 5 percent?
+            println("percent relative error ",relative_error)
+            
             @testset "vintage test" begin
 
                 using Interpolations

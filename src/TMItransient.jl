@@ -20,7 +20,9 @@ export readopt, ces_ncwrite, varying!,
     globalmean_stepresponse,
     #globalmean_stepresponse_with_restoring,
     globalmean_impulseresponse,
+    observe_impulseresponse,
     stepresponse,  deltaresponse, impulseresponse
+
 export datadir, plotsdir, srcdir
 #  read_stepresponse, 
 #  deltaresponse, taudeltaresponse,
@@ -831,6 +833,11 @@ function observe_stepresponse(L, τ, locs, γ; alg=:exponential)
     else
         error("not implemented")
     end
+end
+
+function observe_impulseresponse(L, τi, τs, locs, γ; alg = :exponential)
+    D, τd = observe_stepresponse(L, τs, locs, γ; alg=alg)
+    return impulseresponse(D, τd, τi)
 end
 
 end # module
