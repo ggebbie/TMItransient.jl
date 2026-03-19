@@ -3,6 +3,7 @@ using TMItransient, TMI
 using Test
 using Statistics
 using ExponentialUtilities
+using LinearAlgebra
 
 @testset "TMItransient.jl" begin
     # Write your tests here.
@@ -18,7 +19,6 @@ using ExponentialUtilities
     locs = [wetlocation(γ) for i in 1:N]
 
     @testset "watermass_stepresponse" begin
-        using LinearAlgebra
 
         # read a water-mass surface patch from these choices
         list = TMI.regionlist()
