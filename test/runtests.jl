@@ -20,6 +20,30 @@ using LinearAlgebra
 
         @testset "global mean high level functions" begin
             # top-level, most abstracted algorithm
+            # @testset "watermass_stepresponse" begin
+
+            # NOTE: not sure if this next commented part should be uncommented.
+            # read a water-mass surface patch from these choices
+        # list = TMI.regionlist()
+
+        # # choose water mass (i.e., surface patch) of interest
+        # region = list[1]
+
+        #τ = vcat(0.0:0.1:10,10:2000) # sample Common Era run
+        # doesn't converge to 1 as well (overshoots)
+        # nτ = 10000
+        # τmax = 5000
+        # τ = exp.(range(0,log(τmax + 1.0), nτ)).-1.0
+
+        # @testset "exponential" begin
+        #     # try ExponentialUtilities
+
+        #     for i = 1:2
+        #         if i == 1
+        #             τ = 0.0:0.1:0.5
+        #         else
+        #             τ = 0.1:0.1:0.5
+        #         end
             
             # make some of your own choices with keywords
             # or ignore these optional parameters and

@@ -1,7 +1,7 @@
 name = "TMItransient"
 uuid = "ab8155c7-aa61-46aa-9e27-6244078cebd2"
 authors = ["G Jake Gebbie <ggebbie@whoi.edu>"]
-version = "0.1.11"
+version = "0.2.0"
 
 [deps]
 ExponentialUtilities = "d4d017d3-3776-5f7e-afef-a10c40355c18"
@@ -17,8 +17,8 @@ TMI = "582500f6-28c8-4d8f-aabe-b197735ec1d4"
 [compat]
 ExponentialUtilities = "1.27.0"
 Revise = "3.6.4"
-TMI = "0.2.19"
-julia = "1.11"
+TMI = "0.3"
+julia = "1.12"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
