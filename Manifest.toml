@@ -2,27 +2,12 @@
 
 julia_version = "1.12.5"
 manifest_format = "2.0"
-project_hash = "ff90a253787f228050817be180a550f8f1a213a2"
+project_hash = "cf5edbbaee54c9f523776b055edc4ca827bcc85c"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "f7304359109c768cf32dc5fa2d371565bb63b68a"
 uuid = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
 version = "1.21.0"
-
-    [deps.ADTypes.extensions]
-    ADTypesChainRulesCoreExt = "ChainRulesCore"
-    ADTypesConstructionBaseExt = "ConstructionBase"
-    ADTypesEnzymeCoreExt = "EnzymeCore"
-
-    [deps.ADTypes.weakdeps]
-    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-    ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
-    EnzymeCore = "f151be2c-9106-41f4-ab19-57ee4f262869"
-
-[[deps.ADTypes]]
-git-tree-sha1 = "e2478490447631aedba0823d4d7a80b2cc8cdb32"
-uuid = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
-version = "1.14.0"
 
     [deps.ADTypes.extensions]
     ADTypesChainRulesCoreExt = "ChainRulesCore"
@@ -1120,11 +1105,11 @@ version = "7.8.3+2"
 
 [[deps.TMI]]
 deps = ["CSV", "Distances", "Distributions", "Downloads", "GibbsSeaWater", "GoogleDrive", "Interpolations", "LineSearches", "LinearAlgebra", "NCDatasets", "NetCDF", "Optim", "OrderedCollections", "SparseArrays", "UnicodePlots"]
-git-tree-sha1 = "5e451b9ad769af255cd3f2a9509b0b4d3ea80c73"
+git-tree-sha1 = "bce30889fc2f84d7203460951ce5f5795751a439"
 repo-rev = "main"
 repo-url = "https://github.com/ggebbie/TMI.jl"
 uuid = "582500f6-28c8-4d8f-aabe-b197735ec1d4"
-version = "0.3.6"
+version = "0.3.7"
 
     [deps.TMI.extensions]
     TMIGeoPythonPlotExt = "GeoPythonPlot"
@@ -1143,7 +1128,7 @@ version = "0.3.6"
 deps = ["ExponentialUtilities", "Interpolations", "LinearAlgebra", "NCDatasets", "Pkg", "PreallocationTools", "Revise", "Statistics", "TMI"]
 path = "."
 uuid = "ab8155c7-aa61-46aa-9e27-6244078cebd2"
-version = "0.1.11"
+version = "0.2.0"
 
 [[deps.TOML]]
 deps = ["Dates"]
