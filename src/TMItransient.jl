@@ -18,6 +18,7 @@ export readopt, ces_ncwrite, varying!,
     EvolvingField,
     #globalmean_rampresponse,
     globalmean_stepresponse,
+    observe_stepresponse,
     #globalmean_stepresponse_with_restoring,
     globalmean_impulseresponse,
     observe_impulseresponse,
@@ -253,7 +254,6 @@ end
 """
 goodtime = x -> (typeof(x) <: Number && !isnan(x))
 
-
 """
     function vintagedistribution(t₀,tf,Δ,τ,tmodern=2022,interp="linear")
 
@@ -274,15 +274,34 @@ goodtime = x -> (typeof(x) <: Number && !isnan(x))
 # Warning
 - should be a way to make Δ argument more general (more types)
 """
+# top-level algorithm
+function vintage_distribution(TMIversion::String,
+    t₀,
+    tf;
+    τ=vcat(0:0.01:1.0,1.01:0.1:10,11:4000),
+    τdirichlet=0.05,
+    τmixedlayer=0.1,
+    tmodern=2025,
+    alg=:exponential)
+
+    A, Alu, γ, TMIfile, L, B = config(TMIversion, compute_lu = false);
+    
+    Lmix = mixedlayermatrix(A, γ, τmixedlayer)
+    Ldir = dirichletmatrix(γ, τdirichlet)
+    Ltot = L + Lmix + Ldir
+
+    if alg == :exponential
+        return globalmean_stepresponse_exponential(Ltot, τ, γ)
+    else
+        error("not implemented")
+    end
+end
+
 function vintagedistribution(t₀, tf, Δ, τ; tmodern=2025, interp="linear")
 
     τ₀ = tmodern - t₀ # transfer starting cal year to equivalent lag
     τf = tmodern - tf # end year
 
-    println(size(Δ))
-    println(typeof(Δ))
-
-    
     # get interpolation object
     if interp == "linear"
         itp = linear_interpolation(τ, Δ)
@@ -326,32 +345,10 @@ function vintagedistribution(TMIversion, γ::TMI.Grid, L, B, t₀, tf;
     #τsimulate = vcat(0:0.1:10,11:10000)
     τsimulate = vcat(0:0.1:10,11:ceil(τ₀))
 
-    # # where is t0 for future reference
-    # i0 = first( findall( x -> x == τ₀, τsimulate))
-    
-    # remove times larger than τf + 1
-    # while last(τsimulate) > τ₀ + 1
-    #     pop!(τsimulate)
-    # end
-    # # put τf at the end
-    # push!(τsimulate, tf)
-    
     # this code is explicitly made for exponential solver
     println("tau simulate ",τsimulate)
     Δ, τ = stepresponse_exponential(TMIversion, b, γ, L, B, τsimulate)
-        println("mean last delta 1 ", mean(last(Δ)))
-        println("mean first delta 1 ", mean(first(Δ)))
-
     return vintagedistribution(t₀, tf, Δ, τ, tmodern = tmodern)
-
-    # println("young edge of vintage, τ= ",τsimulate[i0])
-    # println("old edge of vintage, τ= ",τsimulate[end])
-    # return D[end] - D[i0]
-    # g = zeros(γ)
-    # g.tracer[wet(g)] = u[2] - u[1]
-
-    # return g
-
 end
 
 # Try to compute without using MATLAB file
@@ -625,7 +622,7 @@ function globalmean_stepresponse(TMIversion, γ, L, B, τ; alg=:exponential)
     elseif alg == :qndf
         error("not yet implemented")
         #return globalmean_stepresponse_qndf(TMIversion, γ,L,B,τ)
-    end
+    end 
 end
 
 """
@@ -830,6 +827,24 @@ end
 function observe_stepresponse(L, τ, locs, γ; alg=:exponential)
     if alg == :exponential
         return observe_stepresponse_exponential(L, τ, locs, γ)
+    else
+        error("not implemented")
+    end
+end
+
+function observe_stepresponse(L, τ, τs, locs, γ; alg=:exponential)
+    if alg == :exponential
+
+        # don't need to simulate for too long, shorten τs
+
+        iend = findlast(x -> x < τ[end], τs)
+        τshort = τs[begin:iend+1] # need one extra value for interpolation
+        
+        DS, τS = observe_stepresponse_exponential(L, τshort, locs, γ)
+
+        # interpolate onto desired temporal grid
+        itp = linear_interpolation(τS, DS)
+        return itp.(τ), τ
     else
         error("not implemented")
     end

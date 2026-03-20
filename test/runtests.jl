@@ -9,6 +9,12 @@ using LinearAlgebra
     TMIversion = "modern_90x45x33_GH10_GH12"
     #TMIversion = "modern_90x45x33_unpub12"
 
+    #useful for explicit functions
+    A, Alu, γ, TMIfile, L, B = config(TMIversion);
+    Lmix = mixedlayermatrix(A, γ, 0.05)
+    Ldir = dirichletmatrix(γ, 0.1)
+    Ltot = L + Lmix + Ldir
+
     @testset "exponential" begin
         # use ExponentialUtilities
 
@@ -38,11 +44,6 @@ using LinearAlgebra
 
         @testset "global mean basics" begin
     
-            A, Alu, γ, TMIfile, L, B = config(TMIversion);
-            Lmix = mixedlayermatrix(A, γ, 0.05)
-            Ldir = dirichletmatrix(γ, 0.1)
-            Ltot = L + Lmix + Ldir
-
             tf = 1
             τ1 = 0.0:0.01:tf
             τ2 = 0.1:0.01:tf
@@ -104,32 +105,43 @@ using LinearAlgebra
             relative_error = 100*abs.(a + acorrection - a_obs)./denom
             @test all(relative_error .< 5) # relative error less than 5 percent?
             println("percent relative error ",relative_error)
+
+        end
+        
+        @testset "vintage test" begin
+
+            # compare g, g2 at N random points
+            N = 2
+            # get random locations that are wet (ocean)
+            locs = [wetlocation(γ) for i in 1:N]
+
+            #test: is the integral of ĝ equivalent to the output of the `meanage` function? (eqtn 2 of GH 2012) 
+            τs = vcat(0:0.01:1.0,1.01:0.1:10,11:4000)
+            τ = 0:10
+
+            @time D, τD = observe_stepresponse(
+                Ltot, τ, τs, locs, γ, alg = :exponential)
+                        
+            vint =  zeros(length(locs))
+            for j in  eachindex(y1)
+                Δ  = [D[i][j]  for  i  in  eachindex(D)]
+                vint[j] = vintagedistribution(2015,2020,Δ,τD)
+            end
             
-            @testset "vintage test" begin
+            @test maximum(vent) ≤ 1.0
+            #@test minimum(g) ≥ 0.0 # fails for MATLAB
 
-                using Interpolations
+            g2 = vintagedistribution(TMIversion, γ, L, B, 2015, 2020)
+            @test maximum(g2) ≤ 1.0
+            #@test minimum(g) ≥ 0.0 # fails for Julia
 
-                y1 =  zeros(length(locs))
-                for j in  eachindex(y1)
-                    Δ  = [Dlong[i][j]  for  i  in  eachindex(Dlong)]
-                    y1[j] = vintagedistribution(2015,2020,Δ,τsimulate)
-                end
-            
-                @test maximum(y1) ≤ 1.0
-                #@test minimum(g) ≥ 0.0 # fails for MATLAB
+            #y1 = TMI.observe(g,locs,γ)
+            y2 = observe(g2,locs,γ)
 
-                g2 = vintagedistribution(TMIversion, γ, L, B, 2015, 2020)
-                @test maximum(g2) ≤ 1.0
-                #@test minimum(g) ≥ 0.0 # fails for Julia
-
-                #y1 = TMI.observe(g,locs,γ)
-                y2 = observe(g2,locs,γ)
-
-                # formerly calculates relative difference between MATLAB and Julia computations
-                # now calculates relative difference direct and indirect computations
-                for tt in 1:N
-                    @test 100*abs(y1[tt] - y2[tt])/(y1[tt] + y2[tt]) < 1.0 # percent
-                end
+            # formerly calculates relative difference between MATLAB and Julia computations
+            # now calculates relative difference between direct and indirect computations
+            for tt in 1:N
+                @test 100*abs(y1[tt] - y2[tt])/(y1[tt] + y2[tt]) < 1.0 # percent
             end
         end
 
